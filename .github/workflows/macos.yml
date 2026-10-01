@@ -1,0 +1,23 @@
+# The tests on macOS (Apple Silicon), with the versions of uv.lock: once a week, by
+# hand, and on every push once the repository is public. macOS minutes cost ten times
+# more in a private repository, so a push there skips the job.
+name: macOS
+
+on:
+  push:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays, 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  test:
+    if: github.event_name != 'push' || !github.event.repository.private
+    runs-on: macos-latest
+    env:
+      UV_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+      - run: uv run pytest

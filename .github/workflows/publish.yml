@@ -1,0 +1,51 @@
+name: Publish
+
+# Pushing a tag v* publishes that version to PyPI with Trusted Publishing (no API
+# token).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      UV_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+      - name: Check that the tag is the version in pyproject.toml
+        run: |
+          version="$(uv version --short)"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::The tag $GITHUB_REF_NAME is not v$version, the version in pyproject.toml."
+            exit 1
+          fi
+      # The checks of CI
+      - run: uv run ruff format --check
+      - run: uv run ruff check
+      - run: uv run --python 3.11 --isolated pyright
+      - run: uv run pyright --pythonversion 3.12
+      - run: uv run pytest
+      - run: uv build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

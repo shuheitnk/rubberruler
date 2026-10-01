@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Rubber Ruler"
+version: "0.1.0"
+license: MIT
+repository-code: "https://github.com/shuheitnk/rubberruler"
+authors:
+  - family-names: Tanaka
+    given-names: Shuhei
+    affiliation: "The University of Fukuchiyama"
+    orcid: "https://orcid.org/0009-0006-3807-4437"
