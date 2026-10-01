@@ -24,9 +24,9 @@ from joblib.externals.loky import (  # pyright: ignore[reportMissingTypeStubs]
 )
 from numpy.typing import NDArray
 from threadpoolctl import threadpool_limits  # pyright: ignore[reportMissingTypeStubs]
-from tqdm.auto import tqdm
 
 from rubberruler._cache import RunResult, RunStore, check_cache_dir, identify
+from rubberruler._console import progress, say
 from rubberruler._errors import check_int, error
 from rubberruler._instances import InstanceObjective, ProblemInstance, instance_tuple
 from rubberruler._problem import (
@@ -46,13 +46,8 @@ PRECHECK_BUDGET_PER_DIMENSION = 10
 PRECHECK_SECONDS = 60
 # How often the pre-check looks at the time, so that Ctrl-C works soon on every OS.
 WAIT_SECONDS = 0.1
-# How often the progress bar is written when stderr is a file, not a terminal.
-LOG_SECONDS = 30.0
 # How often a worker checks that the process that started it is still there.
 PARENT_CHECK_SECONDS = 1.0
-BAR_FORMAT = (
-    "{desc} {percentage:3.0f}%|{bar:10}| {n:,}/{total:,} [{elapsed}<{remaining}]"
-)
 
 
 @dataclass(frozen=True)
@@ -162,7 +157,7 @@ def measure_performance(
         n_runs=n_runs,
         cache_dir=folder,
     )
-    print(plan_line(plan), file=sys.stderr)
+    say(plan_line(plan))
     measurement = run_plan(
         plan, algorithms, n_jobs=n_jobs, description="Measuring performance"
     )
@@ -275,15 +270,15 @@ def run_plan(
                 advance(len(finished))
     except KeyboardInterrupt:
         if plan.store is None:
-            print(
+            say(
                 "rubberruler: stopped. No runs are saved because cache_dir is None.",
-                file=sys.stderr,
+                style="yellow",
             )
         else:
-            print(
+            say(
                 f"rubberruler: stopped. {saved:,} of {plan.total:,} runs are saved. "
                 "Run the same call again to resume.",
-                file=sys.stderr,
+                style="yellow",
             )
         raise
     ordered = [
@@ -723,36 +718,6 @@ def check_n_jobs(value: object) -> int:
         why="n_jobs must be a non-zero int; -1 uses every CPU.",
         fix="pass n_jobs=-1 to use every CPU, or n_jobs=1 to run in this process.",
     )
-
-
-@contextlib.contextmanager
-def progress(
-    description: str, total: int
-) -> Generator[Callable[[int], object], None, None]:
-    """Show a progress bar on stderr and give its update function.
-
-    Without a bar (nothing to do, or TQDM_DISABLE=1), print the description instead.
-    ``disable`` is not passed to tqdm, so that TQDM_DISABLE can turn the bar off.
-    When stderr is not a terminal, such as a log file, the bar is written every
-    LOG_SECONDS. That takes maxinterval too: tqdm's monitor thread writes a bar that
-    has not been written for maxinterval (10 seconds by default).
-    """
-    if total == 0:
-        print(description, file=sys.stderr)
-        yield lambda count: None
-        return
-    terminal = sys.stderr.isatty()
-    with tqdm(
-        total=total,
-        desc=description,
-        bar_format=BAR_FORMAT,
-        file=sys.stderr,
-        mininterval=0.1 if terminal else LOG_SECONDS,
-        maxinterval=10.0 if terminal else LOG_SECONDS,
-    ) as bar:
-        if bar.disable:
-            print(description, file=sys.stderr)
-        yield bar.update
 
 
 def describe(exception: BaseException) -> str:

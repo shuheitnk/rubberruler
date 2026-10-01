@@ -1,5 +1,4 @@
 import _thread
-import io
 import logging
 import subprocess
 import sys
@@ -522,24 +521,3 @@ def test_bad_settings_stop(
 def test_the_failure_warning_is_singular_for_one_run(count: int, line: str) -> None:
     """The warning about failed runs uses the singular for one run."""
     assert failure_warning(count) == line
-
-
-def test_the_bar_is_written_less_often_into_a_file(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """When stderr is a file, the progress bar is written every 30 seconds,
-    so a log does not get a line for every update. maxinterval is 30 seconds too:
-    otherwise tqdm's monitor thread writes the bar every 10 seconds."""
-    seen: dict[str, object] = {}
-    real = _performance.tqdm
-
-    def recording(*args: object, **kwargs: object) -> object:
-        seen.update(kwargs)
-        return real(*args, **kwargs)  # pyright: ignore[reportUnknownVariableType, reportArgumentType, reportCallIssue]
-
-    monkeypatch.setattr(_performance, "tqdm", recording)
-    monkeypatch.setattr(sys, "stderr", io.StringIO())
-    with _performance.progress("stage", 3) as advance:
-        advance(3)
-    assert seen["mininterval"] == 30.0
-    assert seen["maxinterval"] == 30.0

@@ -1,6 +1,10 @@
+import io
+
 import pandas as pd
 import pytest
+from rich.console import Console
 
+from rubberruler import _card
 from rubberruler._card import DEFAULT_CONFIG, RunConfig, render, select
 
 EXAMPLE_CARD = """\
@@ -216,3 +220,42 @@ def test_negative_zero_is_shown_as_zero() -> None:
     assert (
         lines[5] == "rank                 0.30                     0.30          0.00"
     )
+
+
+def weak_card_with_a_warning() -> _card.Card:
+    table = make_table((0.08, 0.05), (0.07, 0.055))
+    return _card.card(
+        table,
+        select(table),
+        n_algorithms=3,
+        set_sizes=(2400, 240, 240),
+        config=DEFAULT_CONFIG,
+        warnings=("1 run failed; its best value so far was used (+inf if none)",),
+    )
+
+
+def test_rich_draws_the_parts_of_the_card_in_a_panel() -> None:
+    """rich draws what the card says: the answer, the evidence, the table, the
+    meaning, the cautions, the conditions, and the warnings."""
+    parts = weak_card_with_a_warning()
+    screen = io.StringIO()
+    Console(file=screen, width=100, color_system=None).print(parts.panel())
+    drawn = screen.getvalue()
+    lines = parts.text().split("\n")
+    assert lines[0] == "Rubber Ruler Test: use RANK-based features"
+    assert "Rubber Ruler Test" in drawn
+    assert "use RANK-based features" in drawn
+    # The header and the rows of the table are spaced differently in the panel.
+    assert all(line.strip() in drawn for line in lines[1:3] + lines[6:])
+    assert all(cell in drawn for row in parts.rows for cell in row)
+    assert "Warnings:" in drawn
+
+
+def test_the_panel_is_ascii_in_a_console_without_unicode() -> None:
+    """In cp932, rich draws the panel and the table with ASCII lines."""
+    data = io.BytesIO()
+    screen = io.TextIOWrapper(data, encoding="cp932", errors="strict")
+    console = Console(file=screen, width=100, color_system=None)
+    console.print(weak_card_with_a_warning().panel())
+    screen.flush()
+    assert data.getvalue().decode("cp932").isascii()

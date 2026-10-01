@@ -124,6 +124,8 @@ n_runs=5 (default 31)
 - The table shows R² for each feature type: *value* (y rescaled to [0, 1]) and *rank* (y replaced by its ranks). The *degradation* is the drop in R² from the test instances to the transformed test instances, computed before rounding. It is shown for reference and does not affect the answer.
 - The last lines summarize the algorithms, the instances, and the settings. The defaults are the settings used in the paper.
 
+`rich.print(result)` draws the same card in a panel, with the answer and the cautions in color.
+
 The same numbers are saved as a figure, `.rubberruler/rubber_ruler_test.png` and `.svg`:
 
 <img alt="R² of value-based and rank-based features: on the test instances value 0.41 and rank 0.30; on the transformed test instances value 0.23 and rank 0.31" src="https://raw.githubusercontent.com/shuheitnk/rubberruler/main/assets/rubber_ruler_test.png" width="560">
@@ -184,7 +186,7 @@ The package exports nine names. Besides `run_test`, each stage of the test is av
 - **Early checks.** Before the main computation, rubberruler runs every algorithm once with a small budget, the predictor once on dummy data, and the extractor on one instance of each function. A problem stops `run_test` there with an `rr.RubberRulerError` of three lines: what happened, `Why:`, and `Fix:`. An algorithm whose short run takes more than 60 seconds also stops it.
 - **Caching and resuming.** Finished runs are stored in `cache_dir`. After an interruption (Ctrl+C), run the same call again to resume. If you change the source of an algorithm, even a comment, only that algorithm runs again. Delete the folder to start over.
 - **Memory.** Each worker process uses up to a few hundred MB. Pass a smaller `n_jobs` to use less.
-- **Progress bars.** Set `TQDM_DISABLE=1` to hide them. When stderr is redirected to a file, they are written every 30 seconds.
+- **Progress.** In a terminal or a notebook, the stages are drawn with [rich](https://github.com/Textualize/rich). When stderr is redirected to a file, each stage writes plain lines instead: when it starts, at most every 30 seconds, and when it ends. Set `RUBBERRULER_NO_PROGRESS=1` to hide the progress bars.
 - **Docker on Windows and macOS.** Keep `cache_dir` inside the container or in a named volume. In a folder shared with the host, runs are several times slower.
 - **Reproducibility.** With the same package versions, the table repeats to the last digit on Linux and Windows. On macOS (Apple Silicon), it can differ from the third decimal place; in our checks, the card stayed the same.
 

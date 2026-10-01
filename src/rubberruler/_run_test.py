@@ -3,7 +3,6 @@
 import logging
 import math
 import os
-import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -12,9 +11,11 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from rich.panel import Panel
 
 from rubberruler._cache import check_cache_dir
-from rubberruler._card import RunConfig, render, select
+from rubberruler._card import Card, RunConfig, card, select
+from rubberruler._console import progress, say, stage
 from rubberruler._errors import error
 from rubberruler._features import (
     FEATURE_TYPES,
@@ -45,7 +46,6 @@ from rubberruler._performance import (
     plan_line,
     plan_runs,
     precheck_algorithms,
-    progress,
     run_plan,
 )
 from rubberruler._prediction import (
@@ -68,7 +68,8 @@ TABLE_COLUMNS = ["r2_test", "r2_transformed_test", "degradation"]
 class RubberRulerResult:
     """The answer of the Rubber Ruler Test and what it is based on.
 
-    ``print(result)`` shows the card; its first line is the answer.
+    ``print(result)`` shows the card; its first line is the answer. With rich,
+    ``rich.print(result)`` draws the card as a panel.
 
     Attributes:
         selected_feature_type: tau*, "value" or "rank".
@@ -89,8 +90,8 @@ class RubberRulerResult:
     config: RunConfig
     _warnings: tuple[str, ...] = field(default=())
 
-    def __str__(self) -> str:
-        return render(
+    def _card(self) -> Card:
+        return card(
             self.table,
             self.selected_feature_type,
             n_algorithms=len(self.performance.columns),
@@ -103,8 +104,14 @@ class RubberRulerResult:
             warnings=self._warnings,
         )
 
+    def __str__(self) -> str:
+        return self._card().text()
+
     def __repr__(self) -> str:
         return str(self)
+
+    def __rich__(self) -> Panel:
+        return self._card().panel()
 
 
 def run_test(
@@ -237,11 +244,11 @@ def run(
         n_runs=config["n_runs"],
         cache_dir=folder,
     )
-    print(plan_line(plan), file=sys.stderr)
+    say(plan_line(plan))
 
-    print("[1/4] Preparing instances", file=sys.stderr)
-    for instance in split.transformed_test:
-        transformation_of(instance)
+    with stage("[1/4] Preparing instances"):
+        for instance in split.transformed_test:
+            transformation_of(instance)
 
     measurement = run_plan(
         plan, algorithms, n_jobs=n_jobs, description="[2/4] Measuring performance"
@@ -261,28 +268,28 @@ def run(
                 raw_values=raw_values,
             )
 
-    print("[4/4] Fitting predictors and scoring", file=sys.stderr)
     rows: dict[str, list[float]] = {}
-    for feature_type in FEATURE_TYPES:
-        features = tables[feature_type].features
-        names, targets = performance_matrix(performance, split.train, "run_test")
-        fitted = fit(
-            predictor,
-            feature_type,
-            list(features.columns),
-            names,
-            feature_matrix(features, split.train, "run_test"),
-            targets,
-        )
-        r2 = [
-            score(
-                fitted,
-                feature_matrix(features, instance_set, "run_test"),
-                performance_matrix(performance, instance_set, "run_test")[1],
+    with stage("[4/4] Fitting predictors and scoring"):
+        for feature_type in FEATURE_TYPES:
+            features = tables[feature_type].features
+            names, targets = performance_matrix(performance, split.train, "run_test")
+            fitted = fit(
+                predictor,
+                feature_type,
+                list(features.columns),
+                names,
+                feature_matrix(features, split.train, "run_test"),
+                targets,
             )
-            for instance_set in (split.test, split.transformed_test)
-        ]
-        rows[feature_type] = [r2[0], r2[1], r2[0] - r2[1]]
+            r2 = [
+                score(
+                    fitted,
+                    feature_matrix(features, instance_set, "run_test"),
+                    performance_matrix(performance, instance_set, "run_test")[1],
+                )
+                for instance_set in (split.test, split.transformed_test)
+            ]
+            rows[feature_type] = [r2[0], r2[1], r2[0] - r2[1]]
     table = pd.DataFrame.from_dict(rows, orient="index", columns=TABLE_COLUMNS)
     if any(math.isnan(value) for value in table["r2_transformed_test"]):
         raise error(
@@ -320,10 +327,7 @@ def write_figure(table: pd.DataFrame, folder: Path) -> None:
             error,
         )
         return
-    print(
-        f"rubberruler: figure saved to {location}{FIGURE_FILE_NAME}.png and .svg",
-        file=sys.stderr,
-    )
+    say(f"rubberruler: figure saved to {location}{FIGURE_FILE_NAME}.png and .svg")
 
 
 def collect_warnings(

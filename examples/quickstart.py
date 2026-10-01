@@ -1,14 +1,14 @@
 """Quickstart: the Rubber Ruler Test on a small portfolio, with small settings.
 
 It needs scikit-learn too: ``pip install rubberruler scikit-learn``. Run it with
-``python quickstart.py``. While it runs, stderr shows the plan, the four stages, and
-where the figure went:
+``python quickstart.py``. While it runs, stderr shows the plan, the four stages with
+their progress, and where the figure went. In a terminal, the end looks like this:
 
     rubberruler: 43,200 runs (0 cached, 43,200 to run) in .rubberruler/
-    [1/4] Preparing instances
-    [2/4] Measuring performance  40%|████      | 17,355/43,200 [00:05<00:05]
-    [3/4] Computing features
-    [4/4] Fitting predictors and scoring
+    ✔ [1/4] Preparing instances
+    ✔ [2/4] Measuring performance ━━━━━━━━━━━━━━━━━━━━ 100% 43,200/43,200 0:00:21
+    ✔ [3/4] Computing features ━━━━━━━━━━━━━━━━━━━━ 100% 5,760/5,760 0:00:04
+    ✔ [4/4] Fitting predictors and scoring
     rubberruler: figure saved to .rubberruler/rubber_ruler_test.png and .svg
 
 Then ``print(result)`` shows the card. The README says how to read it.

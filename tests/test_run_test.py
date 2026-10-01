@@ -1,3 +1,4 @@
+import io
 import os
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from helpers import PORTFOLIO, assert_three_lines, extract, tiny_run
+from rich.console import Console
 from sklearn.ensemble import RandomForestRegressor
 
 import rubberruler as rr
@@ -67,6 +69,17 @@ def test_the_card_is_the_str_and_the_repr(result: RubberRulerResult) -> None:
     assert text.split("\n")[0] == f"Rubber Ruler Test: use {selected}-based features"
     assert "3 algorithms, 4 train, 4 test, 4 transformed test" in text
     assert all(len(line) <= 80 for line in text.split("\n"))
+
+
+def test_rich_draws_the_result_as_a_panel(result: RubberRulerResult) -> None:
+    """rich.print(result) draws the card in a panel; print(result) stays the text."""
+    screen = io.StringIO()
+    Console(file=screen, width=100, color_system=None).print(result)
+    drawn = screen.getvalue()
+    selected = result.selected_feature_type.upper()
+    assert "Rubber Ruler Test" in drawn
+    assert f"use {selected}-based features" in drawn
+    assert "3 algorithms, 4 train, 4 test, 4 transformed test" in drawn
 
 
 def test_the_parts_give_the_same_r2(result: RubberRulerResult) -> None:

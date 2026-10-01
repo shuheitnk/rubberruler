@@ -36,7 +36,7 @@ dependencies = [
     "joblib>=1.6",
     "cloudpickle>=3.0",
     "threadpoolctl>=3.7",
-    "tqdm>=4.70",
+    "rich>=13.7",
     "matplotlib>=3.10",
     "psutil>=7.2",
 ]

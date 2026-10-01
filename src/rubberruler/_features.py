@@ -11,6 +11,7 @@ import pandas as pd
 import scipy.stats  # pyright: ignore[reportMissingTypeStubs]
 from numpy.typing import NDArray
 
+from rubberruler._console import progress
 from rubberruler._errors import check_int, error
 from rubberruler._instances import (
     InstanceObjective,
@@ -19,7 +20,6 @@ from rubberruler._instances import (
     original_of,
     transformation_of,
 )
-from rubberruler._performance import progress
 from rubberruler._seeding import generator
 
 logger = logging.getLogger("rubberruler")
