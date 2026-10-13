@@ -3,7 +3,7 @@
 pflacco pins NumPy 1.24 and SciPy 1.10, which have no wheels for Python 3.12, so this
 example needs Python 3.11:
 
-    pip install rubberruler pflacco==1.2.2 modcma==1.2.0 modde==0.0.4
+    pip install rubberruler pflacco==1.2.2 "pyarrow<26" modcma==1.2.0 modde==0.0.4
 
 It runs with the default settings, the settings of the paper, which take long: most of
 the time goes to the ELA features, which take about half a second per instance at

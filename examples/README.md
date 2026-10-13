@@ -8,7 +8,7 @@ This folder has runnable scripts, and this page shows how to use rubberruler wit
 |---|---|---|
 | [quickstart.py](quickstart.py) | The quickstart of the main README: random search, DE, and Nelder-Mead from SciPy, four ELA-style features, and a random forest | `pip install rubberruler scikit-learn` |
 | [pymoo_portfolio.py](pymoo_portfolio.py) | GA, PSO, and Nelder-Mead from pymoo, with the quickstart's extractor and predictor | `pip install rubberruler scikit-learn pymoo==0.6.2` |
-| [modular_ela.py](modular_ela.py) | CMA-ES and IPOP-CMA-ES from ModularCMAES, DE and SHADE from ModDE, and pflacco's 55 ELA features (Python 3.11) | `pip install rubberruler pflacco==1.2.2 modcma==1.2.0 modde==0.0.4` |
+| [modular_ela.py](modular_ela.py) | CMA-ES and IPOP-CMA-ES from ModularCMAES, DE and SHADE from ModDE, and pflacco's 55 ELA features (Python 3.11) | `pip install rubberruler pflacco==1.2.2 "pyarrow<26" modcma==1.2.0 modde==0.0.4` |
 | [deepela.py](deepela.py) | DeepELA's 48 learned features, with the quickstart's portfolio and predictor | See [DeepELA](#deepela) |
 | [augmentation.py](augmentation.py) | Ten rubber rulers on your own objective, and what they do to its features; see [Augmenting training data](#augmenting-training-data) | `pip install rubberruler` |
 
@@ -209,10 +209,10 @@ A function of another shape takes one line in the portfolio: `"my-es": lambda p:
 pflacco installs only on Python 3.11:
 
 ```sh
-pip install pflacco==1.2.2
+pip install pflacco==1.2.2 "pyarrow<26"
 ```
 
-pflacco pins NumPy 1.24 and SciPy 1.10, which have no wheels for Python 3.12. On 3.12, pip tries to build NumPy 1.24 and stops with errors such as `Cannot import 'setuptools.build_meta'` or `module 'pkgutil' has no attribute 'ImpImporter'`. Name the version of pflacco: without it, pip can fall back to pflacco 0.4, an old version that needs R through rpy2.
+pflacco pins NumPy 1.24 and SciPy 1.10, which have no wheels for Python 3.12. On 3.12, pip tries to build NumPy 1.24 and stops with errors such as `Cannot import 'setuptools.build_meta'` or `module 'pkgutil' has no attribute 'ImpImporter'`. Name the version of pflacco: without it, pip can fall back to pflacco 0.4, an old version that needs R through rpy2. Keep pyarrow below 26 too: pyarrow 26 needs NumPy 2, and with NumPy 1.24, `import rubberruler` stops with `pyarrow requires NumPy 2.0 or newer`.
 
 Each feature set of pflacco also reports what it cost, such as the seconds it took (`*.costs_runtime`). Those change from run to run, so leave them out:
 
@@ -254,7 +254,7 @@ Keep d = 10, unlike the quickstart's d = 2: at d = 2, `calculate_ela_level` cann
 
 pflacco takes about half a second per instance at d = 10, and the instances are computed one after another, so with the default settings the features alone take most of an hour. To try it first, give `run_test` fewer instances and runs: `train_instance_numbers=range(11, 16), test_instance_numbers=range(1, 4), budget_per_dimension=100, n_runs=5`. That took about 3.5 minutes on a 16-core PC, almost all of it for the features.
 
-[modular_ela.py](modular_ela.py) runs the test with these 55 features and the algorithms of ModularCMAES and ModDE above. It needs pflacco, ModularCMAES, and ModDE: `pip install rubberruler pflacco==1.2.2 modcma==1.2.0 modde==0.0.4`.
+[modular_ela.py](modular_ela.py) runs the test with these 55 features and the algorithms of ModularCMAES and ModDE above. It needs pflacco, ModularCMAES, and ModDE: `pip install rubberruler pflacco==1.2.2 "pyarrow<26" modcma==1.2.0 modde==0.0.4`.
 
 ### DeepELA
 
