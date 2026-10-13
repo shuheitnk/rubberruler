@@ -82,6 +82,7 @@ strict = [
     "src/rubberruler/_seeding.py",
     "src/rubberruler/_problem.py",
     "src/rubberruler/_instances.py",
+    "src/rubberruler/_objective.py",
     "src/rubberruler/_performance.py",
     "src/rubberruler/_features.py",
     "src/rubberruler/_prediction.py",

@@ -8,6 +8,7 @@ PUBLIC_NAMES = {
     "run_test",
     "bbob_instances",
     "transform",
+    "transform_objective",
     "measure_performance",
     "compute_features",
     "fit_predictor",
@@ -17,8 +18,8 @@ PUBLIC_NAMES = {
 }
 
 
-def test_all_is_exactly_the_nine_public_names() -> None:
-    """rubberruler.__all__ is exactly these 9 names."""
+def test_all_is_exactly_the_ten_public_names() -> None:
+    """rubberruler.__all__ is exactly these 10 names."""
     assert sorted(rubberruler.__all__) == sorted(PUBLIC_NAMES)
     for name in rubberruler.__all__:
         assert hasattr(rubberruler, name)

@@ -6,6 +6,7 @@ Stretch the ruler. Keep the features that still measure.
 from rubberruler._errors import RubberRulerError
 from rubberruler._features import compute_features
 from rubberruler._instances import bbob_instances, transform
+from rubberruler._objective import transform_objective
 from rubberruler._performance import measure_performance
 from rubberruler._prediction import fit_predictor, r2_score
 from rubberruler._problem import Problem
@@ -21,4 +22,5 @@ __all__ = [
     "r2_score",
     "run_test",
     "transform",
+    "transform_objective",
 ]
