@@ -157,7 +157,7 @@ src/rubberruler/
 - The flow figure was drawn from a Mermaid source (`docs/flow.mmd`) with mermaid-cli (the Docker image `minlag/mermaid-cli:12.0.0`): `-t default` for the light version and `-t dark` for the dark version, both with `-s 2`. The backgrounds are #fcfcfb and #1a1a19, as in the figure of ψ. SVG is not used because its text becomes foreignObject, which an img tag cannot always display. PyPI does not render Mermaid, so the README shows an image.
 - [Verified] With the default wrapping width of Mermaid (200px), labels split into two lines with `<br/>` wrap again, and the boxes take 4 to 5 lines. The configuration at the top of the `.mmd` sets `flowchart.wrappingWidth` to 400.
 - [Verified] The user of the image is uid 1001. On Linux, writing to a folder of another uid needs `--user $(id -u):$(id -g)` and then also `HOME=/tmp` (without it, the crashpad of the browser cannot write to HOME, and the browser does not start).
-- As of 0.1.0, the sources of the figures (`docs/flow.mmd` and the scripts `draw_transformations.py`, `draw_readme_result.py`, and `make_teaser.py`) are not in the repository. They remain in the history before 0.1.0 (the branch `readme`).
+- As of 0.1.0, the sources of the figures (`docs/flow.mmd` and the scripts `draw_transformations.py`, `draw_readme_result.py`, and `make_teaser.py`) are not in the repository. They remain in the history before 0.1.0 (the branch `readme`, and after step 1 of 6.3, only in the bundle of that step).
 
 ### 3.11 Character Encoding
 
@@ -279,10 +279,15 @@ A push of a tag `v*` makes `.github/workflows/publish.yml` publish to PyPI. It u
 
 The English documents (formerly step 1: CLAUDE.md and the md files of docs/ in English, with English as the source of truth from then on) were completed on 2026-10-14. The absolute URLs of the images and the push trigger of `macos.yml` (formerly step 2) are in place as of 0.1.0.
 
-1. Before the first version, make the repository public. Check the README with "The appearance on PyPI" of 6.1, now with the images displayed. The job of `macos.yml` then runs on every push (public repositories do not use paid minutes).
-2. Raise `version` in `pyproject.toml`, write the entry of the version in CHANGELOG.md (a change that can change the answer starts with **Can change the answer**; spec 7.3), pass the checks of Chapter 5, commit, and push to main. Wait until CI is green.
-3. Create and push the tag: `git tag v0.1.0` → `git push origin v0.1.0`. The tag is `v` followed by the version in pyproject.
-4. The workflow of publishing runs. Its build job fails if the tag differs from the version in pyproject. It then runs the checks of CI and `uv build` and stores dist as an artifact. The publish job uploads to PyPI with `pypa/gh-action-pypi-publish` inside the environment `pypi`.
-5. Check the version and the display of the README at https://pypi.org/project/rubberruler/.
-6. Create a Release from the tag on GitHub. If Zenodo is connected, it issues a DOI; add `doi` to `CITATION.cff` and commit.
-7. Once the paper is published, add it to Citation in the README and to `CITATION.cff` (`preferred-citation`).
+1. Before the repository is made public, archive the history before 0.1.0 and delete its branches from origin. That history contains Japanese documents and commit messages. As of 2026-10-14, its branches on origin are `readme`, `review`, `usability`, `followup`, `deepela`, and `transform-objective-docs`; the history of main starts at the commit "First release: rubberruler 0.1.0" (49af2de).
+   1. Fetch everything and list the branches of the old history again, since new ones may exist: `git fetch origin`, then, for each remote branch, `git merge-base --is-ancestor 49af2de origin/<branch>` fails for a branch of the old history.
+   2. Write all refs, including the remote-tracking branches, into one file, and check it: `git bundle create rubberruler-history-<date>.bundle --all`, `git bundle verify rubberruler-history-<date>.bundle`, and `git bundle list-heads rubberruler-history-<date>.bundle`, which must list every branch of step 1. Keep the file outside the repository; it holds the only copy of the old history (including the sources of the figures; 3.10).
+   3. Delete the branches from origin: `git push origin --delete readme review usability followup deepela transform-objective-docs` (with the list of step 1). `git ls-remote --heads origin` then lists only branches of the new history.
+   4. Delete the same branches locally (`git branch -D ...`). GitHub can keep the commits of deleted branches reachable by their SHA for some time; only GitHub Support can remove them at once.
+2. Before the first version, make the repository public. Check the README with "The appearance on PyPI" of 6.1, now with the images displayed. The job of `macos.yml` then runs on every push (public repositories do not use paid minutes).
+3. Raise `version` in `pyproject.toml`, write the entry of the version in CHANGELOG.md (a change that can change the answer starts with **Can change the answer**; spec 7.3), pass the checks of Chapter 5, commit, and push to main. Wait until CI is green.
+4. Create and push the tag: `git tag v0.1.0` → `git push origin v0.1.0`. The tag is `v` followed by the version in pyproject.
+5. The workflow of publishing runs. Its build job fails if the tag differs from the version in pyproject. It then runs the checks of CI and `uv build` and stores dist as an artifact. The publish job uploads to PyPI with `pypa/gh-action-pypi-publish` inside the environment `pypi`.
+6. Check the version and the display of the README at https://pypi.org/project/rubberruler/.
+7. Create a Release from the tag on GitHub. If Zenodo is connected, it issues a DOI; add `doi` to `CITATION.cff` and commit.
+8. Once the paper is published, add it to Citation in the README and to `CITATION.cff` (`preferred-citation`).
