@@ -103,6 +103,20 @@ def test_the_tutorial_is_the_quickstart() -> None:
     assert quickstart.endswith(readme_python_blocks()[0])
 
 
+def test_the_augmentation_block_is_its_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The block of examples/README.md that calls transform_objective is
+    examples/augmentation.py, and the output shown after it is what it prints."""
+    example = ROOT / "examples" / "augmentation.py"
+    blocks = readme_python_blocks(EXAMPLES_README)
+    (block,) = [code for code in blocks if "transform_objective" in code]
+    assert example.read_text("utf-8").endswith(block)
+    runpy.run_path(str(example), run_name="__main__")
+    printed = capsys.readouterr().out
+    assert f"```text\n{printed}```" in EXAMPLES_README.read_text("utf-8")
+
+
 def test_the_readme_code_for_the_tools_is_from_their_examples() -> None:
     """The blocks of examples/README.md for ModularCMAES, ModDE, pflacco,
     pymoo, and DeepELA are taken from their examples, which the tests run: the same

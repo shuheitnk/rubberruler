@@ -165,13 +165,14 @@ All arguments of `run_test` except the first three are keyword-only. The default
 
 ### API
 
-The package exports nine names. Besides `run_test`, each stage of the test is available on its own:
+The package exports ten names. Besides `run_test`, each stage of the test is available on its own, and so is the rubber ruler for your own objectives:
 
 | Name | Description |
 |---|---|
 | `run_test(portfolio, feature_extractor, predictor, ...)` | Run the whole test and return the result; `print(result)` shows the card |
 | `bbob_instances(...)` | Create the training, test, and transformed test instances |
 | `transform(instance)` | Return the transformed instance, whose objective is g(f(x)) |
+| `transform_objective(objective, lower_bounds, upper_bounds, seed=...)` | Return g(f(x)) for your own objective f, with a random rubber ruler |
 | `measure_performance(portfolio, instances, ...)` | Measure the performance J of every algorithm on every instance |
 | `compute_features(feature_extractor, instances, feature_type, ...)` | Compute the features with one feature type |
 | `fit_predictor(predictor, features, performance, instances=...)` | Fit one copy of the predictor per algorithm |
@@ -188,6 +189,7 @@ The package exports nine names. Besides `run_test`, each stage of the test is av
 - **Memory.** Each worker process uses up to a few hundred MB. Pass a smaller `n_jobs` to use less.
 - **Progress.** In a terminal or a notebook, the stages are drawn with [rich](https://github.com/Textualize/rich). When stderr is redirected to a file, each stage writes plain lines instead: when it starts, at most every 30 seconds, and when it ends. Set `RUBBERRULER_NO_PROGRESS=1` to hide the progress bars.
 - **Docker on Windows and macOS.** Keep `cache_dir` inside the container or in a named volume. In a folder shared with the host, runs are several times slower.
+- **Augmentation.** `rr.transform_objective` applies a random rubber ruler to any objective, to augment your own training data ([example](https://github.com/shuheitnk/rubberruler/blob/main/examples/README.md#augmenting-training-data)).
 - **Reproducibility.** With the same package versions, the table repeats to the last digit on Linux and Windows. On macOS (Apple Silicon), it can differ from the third decimal place; in our checks, the card stayed the same.
 
 ## How it works

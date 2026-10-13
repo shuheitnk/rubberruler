@@ -10,6 +10,7 @@ This folder has runnable scripts, and this page shows how to use rubberruler wit
 | [pymoo_portfolio.py](pymoo_portfolio.py) | GA, PSO, and Nelder-Mead from pymoo, with the quickstart's extractor and predictor | `pip install rubberruler scikit-learn pymoo==0.6.2` |
 | [modular_ela.py](modular_ela.py) | CMA-ES and IPOP-CMA-ES from ModularCMAES, DE and SHADE from ModDE, and pflacco's 55 ELA features (Python 3.11) | `pip install rubberruler pflacco==1.2.2 modcma==1.2.0 modde==0.0.4` |
 | [deepela.py](deepela.py) | DeepELA's 48 learned features, with the quickstart's portfolio and predictor | See [DeepELA](#deepela) |
+| [augmentation.py](augmentation.py) | Ten rubber rulers on your own objective, and what they do to its features; see [Augmenting training data](#augmenting-training-data) | `pip install rubberruler` |
 
 Run a script with Python, such as `python quickstart.py`. Apart from the quickstart, the scripts use the default settings, the settings of the paper, which take from about half an hour to several hours. The docstring of each script gives small settings to try it first.
 
@@ -396,3 +397,66 @@ r2 = rr.r2_score(
 ```
 
 Here `result` is the one from [quickstart.py](quickstart.py), and `r2` is the R² on the transformed test instances, the number that the card compares.
+
+## Augmenting training data
+
+If the card says rank but you want to keep value-based features, train the predictor on transformed copies of your own problems too, so that it learns features under many rubber rulers. `rr.transform_objective` applies a random rubber ruler to any objective: it returns g(f(x)), where g is built as for BBOB in [How it works](../README.md#how-it-works), but rescales f by the smallest and the largest of 10,000 random values of f. Pass a different `seed` for each copy.
+
+This example makes ten copies of the Rastrigin function and compares two features of the quickstart on the original and on the copies:
+
+```python
+import numpy as np
+from scipy.stats import kurtosis, rankdata
+
+import rubberruler as rr
+
+
+def rastrigin(x):
+    return 10 * x.shape[-1] + np.sum(x**2 - 10 * np.cos(2 * np.pi * x), axis=-1)
+
+
+d = 5
+lower_bounds = np.full(d, -5.12)
+upper_bounds = np.full(d, 5.12)
+copies = [
+    rr.transform_objective(rastrigin, lower_bounds, upper_bounds, seed=k)
+    for k in range(10)
+]
+
+
+# Two features of the quickstart, with y value-based or rank-based as in rubberruler.
+def features(X, y, feature_type):
+    if feature_type == "value":
+        y = (y - y.min()) / (y.max() - y.min())
+    else:
+        y = rankdata(y) / len(y)
+    design = np.hstack([np.ones((len(y), 1)), X, X**2])
+    coefficients = np.linalg.lstsq(design, y, rcond=None)[0]
+    quadratic_r2 = 1 - np.var(y - design @ coefficients) / np.var(y)
+    return {"kurtosis": kurtosis(y), "quadratic_r2": quadratic_r2}
+
+
+X = np.random.default_rng(0).uniform(lower_bounds, upper_bounds, size=(50 * d, d))
+for feature_type in ("value", "rank"):
+    original = features(X, rastrigin(X), feature_type)
+    transformed = [features(X, copy(X), feature_type) for copy in copies]
+    for name, value in original.items():
+        values = [copy_features[name] for copy_features in transformed]
+        print(
+            f"{feature_type:5} {name:12}  original {value:6.3f}"
+            f"  copies {min(values):6.3f} to {max(values):6.3f}"
+        )
+```
+
+It prints:
+
+```text
+value kurtosis      original -0.233  copies -0.920 to  4.374
+value quadratic_r2  original  0.562  copies  0.422 to  0.566
+rank  kurtosis      original -1.200  copies -1.200 to -1.200
+rank  quadratic_r2  original  0.526  copies  0.526 to  0.526
+```
+
+The value-based features spread over the copies, while the rank-based ones stay exactly the same, because g keeps the order of the values. Measure your algorithms on the copies as on the originals and add them to the training data.
+
+Values better than all of the random ones, near the optimum, are only rescaled, not stretched; the random sample points that features are computed from mostly lie in the stretched range.
