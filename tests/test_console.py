@@ -59,7 +59,7 @@ def test_in_a_terminal_each_stage_ends_with_a_check_mark(
 
 
 def test_a_terminal_without_unicode_gets_ascii(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A terminal in cp932 gets an ASCII spinner and bar, and no check mark."""
+    """A terminal in cp932 receives an ASCII spinner and bar, and no check mark."""
     screen = Screen("cp932")
     monkeypatch.setattr(_console, "stderr_console", screen.console)
     run_two_stages()

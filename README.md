@@ -69,7 +69,7 @@ def nelder_mead(problem):
 portfolio = {"random-search": random_search, "de": de, "nelder-mead": nelder_mead}
 
 
-# 2. A feature extractor. It gets a sample X and its objective values y,
+# 2. A feature extractor. It receives a sample X and its objective values y,
 #    rescaled (value-based) or ranked (rank-based), and returns named features.
 #    These four are ELA-style.
 def simple_features(X, y):
@@ -184,7 +184,7 @@ The package exports ten names. Besides `run_test`, each stage of the test is ava
 
 ### Notes
 
-- **Early checks.** Before the main computation, rubberruler runs every algorithm once with a small budget, the predictor once on dummy data, and the extractor on one instance of each function. A problem stops `run_test` there with an `rr.RubberRulerError` of three lines: what happened, `Why:`, and `Fix:`. An algorithm whose short run takes more than 60 seconds also stops it.
+- **Pre-checks.** Before the main computation, rubberruler runs every algorithm once with a small budget, the predictor once on dummy data, and the extractor on one instance of each function. A problem stops `run_test` there with an `rr.RubberRulerError` of three lines: what happened, `Why:`, and `Fix:`. An algorithm whose short run takes more than 60 seconds also stops it.
 - **Caching and resuming.** Finished runs are stored in `cache_dir`. After an interruption (Ctrl+C), run the same call again to resume. If you change the source of an algorithm, even a comment, only that algorithm runs again. Delete the folder to start over.
 - **Memory.** Each worker process uses up to a few hundred MB. Pass a smaller `n_jobs` to use less.
 - **Progress.** In a terminal or a notebook, the stages are drawn with [rich](https://github.com/Textualize/rich). When stderr is redirected to a file, each stage writes plain lines instead: when it starts, at most every 30 seconds, and when it ends. Set `RUBBERRULER_NO_PROGRESS=1` to hide the progress bars.
@@ -196,12 +196,12 @@ The package exports ten names. Besides `run_test`, each stage of the test is ava
 
 `run_test` runs in four stages, which its progress output also shows. The numbers below are the defaults.
 
-1. **Preparing instances.** The training instances are BBOB instances 11 to 110 of all 24 functions, and the test instances are instances 1 to 10. Each test instance also gets a transformed copy whose objective is g(f(x)). The function g rescales f to [0, 1] by its optimum and the largest of 10,000 random values, then applies ψ, a random strictly increasing function: the rubber ruler. Above that largest value, g only rescales, so g is strictly increasing everywhere.
+1. **Preparing instances.** The training instances are BBOB instances 11 to 110 of all 24 functions, and the test instances are instances 1 to 10. Each test instance also has a transformed test instance, whose objective is g(f(x)). The function g rescales f to [0, 1] by its optimum and the largest of 10,000 random values, then applies ψ, a random strictly increasing function: the rubber ruler. Above that largest value, g only rescales, so g is strictly increasing everywhere.
 2. **Measuring performance.** Every algorithm runs 31 times on every instance with a budget of 1000·d evaluations. Its performance J on an instance is the probability that one of its runs beats a run of another algorithm (a tie counts as half), averaged over the other algorithms.
 3. **Computing features.** The extractor receives 50·d uniform random points X and their objective values y, once for each feature type. Value-based: y rescaled to [0, 1] by its minimum and maximum. Rank-based: the ranks of y divided by n, with ties sharing their average rank.
 4. **Fitting predictors and scoring.** For each feature type, one copy of the predictor per algorithm learns J from the features of the training instances. R² is then computed over all pairs of instance and algorithm, on the test instances and on the transformed test instances.
 
-**The answer is the feature type with the higher R² on the transformed test instances.** A tie goes to rank, which loses nothing.
+**The answer is the feature type with the higher R² on the transformed test instances.** A tie selects rank, which loses nothing.
 
 The transformation keeps the order of any two objective values. A comparison-based algorithm therefore makes the same moves, and its J stays the same (unless it stops on differences of values, as Nelder–Mead does). Rank-based features stay the same too, while value-based features change with the transformation, so the predictor receives inputs unlike those it learned from.
 
@@ -209,7 +209,7 @@ The degradation does not decide the answer: rank-based features do not change un
 
 The card marks the answer as weak when the two R² values differ by less than 0.01, or when both are below 0.1. In the second case, improve the extractor or the predictor before choosing a feature type.
 
-Each test instance gets its own rubber ruler. Here are 25 of them:
+Each test instance has its own rubber ruler; the figure shows 25 of them:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shuheitnk/rubberruler/main/assets/transformations-dark.png">

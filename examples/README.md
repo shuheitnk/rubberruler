@@ -252,7 +252,7 @@ Some values are infinite, and rubberruler counts them as NaN, so use a predictor
 
 Keep d = 10, unlike the quickstart's d = 2: at d = 2, `calculate_ela_level` cannot split the plateaus of some instances of f7 and raises an exception, which stops `run_test`.
 
-pflacco takes about half a second per instance at d = 10, and the instances are computed one after another, so with the default settings the features alone take most of an hour. To try it first, give `run_test` fewer instances and runs: `train_instance_numbers=range(11, 16), test_instance_numbers=range(1, 4), budget_per_dimension=100, n_runs=5`. That took about 3.5 minutes on a 16-core PC, almost all of it for the features.
+pflacco takes about half a second per instance at d = 10, and the instances are computed one after another, so with the default settings the features alone take close to an hour. To try it first, give `run_test` fewer instances and runs: `train_instance_numbers=range(11, 16), test_instance_numbers=range(1, 4), budget_per_dimension=100, n_runs=5`. That took about 3.5 minutes on a 16-core PC, almost all of it for the features.
 
 [modular_ela.py](modular_ela.py) runs the test with these 55 features and the algorithms of ModularCMAES and ModDE above. It needs pflacco, ModularCMAES, and ModDE: `pip install rubberruler pflacco==1.2.2 "pyarrow<26" modcma==1.2.0 modde==0.0.4`.
 
@@ -270,7 +270,7 @@ export PYTHONPATH="$PWD/deep_ela"
 ```
 
 - Tested with torch 2.14.0 and lightning 2.6.6 on Python 3.11 and 3.12, so it can share an environment with pflacco.
-- Fix the commit: the features change from commit to commit. The last four commits changed how the coordinates and objective values reach the model, and the stride.
+- Pin the commit: the features change from commit to commit. The last four commits changed how the coordinates and objective values reach the model, and the stride.
 - Do not use the repository's `install.sh`: it uninstalls pflacco and builds DeepELA into the latest pflacco from GitHub.
 - On Linux, torch from PyPI comes with the CUDA libraries, several GB. If you use only the CPU, install torch as [PyTorch's page](https://pytorch.org/get-started/locally/) shows for the CPU.
 
@@ -292,15 +292,15 @@ def deep_ela_features(X, y):
 
 Set torch's seed before each call. DeepELA averages its features over 10 random orders of its input slots, drawn from torch's global random numbers, so without the seed they change from call to call. With the seed, they repeat bit for bit on the same machine, whatever the number of threads or the Python version; on another CPU they can differ in the last bit of a float32.
 
-The large models put the coordinates and the objective value into 12 slots, so they take d ≤ 11. At d = 12 they run without an error, but the objective value shares a slot with the last coordinate. So the extractor raises an error above d = 11, and `run_test` stops on it before the long work.
+The large models put the coordinates and the objective value into 12 slots, so they take d ≤ 11. At d = 12 they run without an error, but the objective value shares a slot with the last coordinate. So the extractor raises an error above d = 11, and `run_test` stops on it before the heavy computation.
 
 DeepELA's README asks for input without preprocessing. Value-based features come out almost the same as for the raw input, as DeepELA standardizes each column itself. How far rank-based features differ from them is what rubberruler measures.
 
-[deepela.py](deepela.py) runs the test with these 48 features and the quickstart's portfolio and predictor. With an NVIDIA GPU, pass `device="cuda"` to `load_large_50d_v1`: on an RTX 4070 Ti the features of the default settings then took about a minute instead of about 30, with values up to about 10⁻⁵ away from the CPU's.
+[deepela.py](deepela.py) runs the test with these 48 features and the quickstart's portfolio and predictor. With an NVIDIA GPU, pass `device="cuda"` to `load_large_50d_v1`: on an RTX 4070 Ti the features of the default settings then took about a minute instead of about 30, with values that differ from those on the CPU by up to about 10⁻⁵.
 
 ### An extractor of another shape
 
-A function of another shape joins in one line. Here yours takes `(y, X)` and returns a pandas Series:
+A function of another shape is connected in one line. Here, the function takes `(y, X)` and returns a pandas Series:
 
 ```python
 import numpy as np

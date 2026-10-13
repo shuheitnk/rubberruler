@@ -51,7 +51,7 @@ def test_derive_seed_is_the_same_in_another_process() -> None:
 
 
 def test_derive_seed_separates_domains_and_keys() -> None:
-    """Each use of randomness gets its own seed."""
+    """Each use of randomness receives its own seed."""
     seeds = {
         derive_seed("transform", 42, "bbob", 1, 1, 10),
         derive_seed("fmax", 42, "bbob", 1, 1, 10),

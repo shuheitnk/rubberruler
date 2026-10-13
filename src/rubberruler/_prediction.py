@@ -32,7 +32,7 @@ class FittedPredictor:
     """predictor_tau: one fitted copy of the predictor per algorithm.
 
     It remembers the feature type and the feature names it was fitted on, so that
-    ``r2_score`` can stop when it gets other features.
+    ``r2_score`` can stop when it receives other features.
     """
 
     feature_type: FeatureType
@@ -121,7 +121,8 @@ def merge_rounding(
 
     Going up from the smallest value, a value is kept unless it differs only by
     rounding from the last kept value. Whether two values do depends on those two
-    alone, so one huge value does not merge the others. NaN and infinity are left out.
+    alone, so one very large value does not merge the others. NaN and infinity are
+    left out.
     """
     columns: list[NDArray[np.float64]] = []
     for column in matrix.T:
@@ -225,7 +226,7 @@ def coefficient_of_determination(
     """1 - sum (J - J_hat)^2 / sum (J - mean J)^2 over all entries; nan if J is equal.
 
     Equal values are checked directly: their computed mean can differ from them by
-    rounding, which would make the denominator tiny instead of 0.
+    rounding, which would make the denominator very small instead of 0.
     """
     if np.all(actual == actual.flat[0]):
         logger.warning(UNDEFINED_R2)

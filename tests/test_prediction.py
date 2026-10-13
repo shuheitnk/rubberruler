@@ -77,7 +77,7 @@ def test_r2_matches_scikit_learn_on_the_flattened_arrays(
     if np.all(actual == actual.flat[0]):
         assert math.isnan(coefficient_of_determination(actual, clipped))
         return
-    # With almost equal J the denominator is tiny, and summation order dominates.
+    # With almost equal J the denominator is very small, and summation order dominates.
     assume(np.ptp(actual) > 1e-3)
     assert coefficient_of_determination(actual, clipped) == pytest.approx(
         sklearn_r2_score(actual.ravel(), clipped.ravel())
@@ -200,7 +200,7 @@ class ChangesItsInput:
 
 
 def test_predictors_get_their_own_writable_arrays(split: InstanceSplit) -> None:
-    """Each fit and predict gets writable copies, safe to change in place."""
+    """Each fit and predict receives writable copies, safe to change in place."""
     features = make_features(split, "rank")
     performance = make_performance(features)
     before = features.copy()

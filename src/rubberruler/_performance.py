@@ -410,8 +410,8 @@ def watch_parent(parent: int) -> None:
     """Exit this worker as soon as the parent process is gone (one watch per worker).
 
     A parent killed with kill -9 cannot stop its workers, and loky's workers then
-    wait forever to send their results. On POSIX a worker gets a new parent when its
-    parent dies; on Windows, psutil tells whether the parent still exists.
+    wait forever to send their results. On POSIX a worker is adopted by a new parent
+    when its parent dies; on Windows, psutil tells whether the parent still exists.
     """
     if parent in _watched_parent:
         return

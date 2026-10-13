@@ -551,7 +551,7 @@ def test_a_function_whose_source_file_holds_other_text_is_identified(
     tmp_path: Path,
 ) -> None:
     """Code compiled under the name of a file that holds other text (as
-    exec does) still gets an identifier; inspect may fail to read its source."""
+    exec does) still receives an identifier; inspect may fail to read its source."""
     other = tmp_path / "notes.txt"
     other.write_text("it's\n" * 5, encoding="utf-8")
     namespace: dict[str, object] = {}

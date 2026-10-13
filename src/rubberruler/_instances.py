@@ -147,7 +147,7 @@ def transform(instance: ProblemInstance) -> ProblemInstance:
     g rescales f to [0, 1] by its optimum and the largest of 10,000 random values,
     and stretches it by a random strictly increasing curve. It depends only on the
     master seed, the function, the instance number, and the dimension, so the same
-    instance always gets the same g. The search space does not change.
+    instance always receives the same g. The search space does not change.
     """
     if not isinstance(instance, ProblemInstance):  # pyright: ignore[reportUnnecessaryIsInstance]
         raise error(

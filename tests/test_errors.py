@@ -54,6 +54,6 @@ def test_a_missing_visual_cpp_runtime_says_what_to_install(tmp_path: Path) -> No
 
 
 def test_other_import_errors_of_ioh_are_left_as_they_are(tmp_path: Path) -> None:
-    """Only the DLL error gets the three lines."""
+    """Only the DLL error receives the three lines."""
     lines = import_with_a_broken_ioh(tmp_path, "something else")
     assert lines[-1] == "ImportError: something else"

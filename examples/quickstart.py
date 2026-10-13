@@ -45,7 +45,7 @@ def nelder_mead(problem):
 portfolio = {"random-search": random_search, "de": de, "nelder-mead": nelder_mead}
 
 
-# 2. A feature extractor. It gets a sample X and its objective values y,
+# 2. A feature extractor. It receives a sample X and its objective values y,
 #    rescaled (value-based) or ranked (rank-based), and returns named features.
 #    These four are ELA-style.
 def simple_features(X, y):
