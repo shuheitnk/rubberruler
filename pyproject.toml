@@ -70,6 +70,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.sdist]
 include = ["/src/rubberruler", "/README.md", "/LICENSE", "/pyproject.toml"]
 
+# The design documents show signatures and fragments, not runnable code.
+[tool.ruff]
+extend-exclude = ["docs"]
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "NPY", "PD", "RUF"]
 
