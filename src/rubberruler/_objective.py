@@ -76,10 +76,11 @@ def transform_objective(
                 "try objective(lower_bounds). The original exception is shown above.",
             ) from exception
     finite = values[np.isfinite(values)]
-    if np.unique(finite).size < 2:
+    distinct = np.unique(finite).size
+    if distinct < 2:
         raise error(
-            f"objective has {np.unique(finite).size} distinct finite values at the "
-            f"{n_samples} sample points.",
+            f"objective gave only {distinct} distinct finite "
+            f"value{'' if distinct == 1 else 's'} at the {n_samples} sample points.",
             why="g rescales objective by its smallest and largest value, which must "
             "differ.",
             fix="pass an objective that is not constant on the bounds, or a larger "
