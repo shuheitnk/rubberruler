@@ -121,7 +121,7 @@ def test_a_figure_that_cannot_be_written_is_only_a_warning(
 
 
 def test_labels_sit_on_a_white_box_in_front_of_the_lines() -> None:
-    """Near R² = 1 the reference line breaks behind each value label."""
+    """Near R^2 = 1 the reference line breaks behind each value label."""
     axes = draw(make_table((0.95, 0.93), (0.97, 0.95))).axes[0]
     assert len(axes.texts) == 4
     front = max(line.get_zorder() for line in axes.lines)
