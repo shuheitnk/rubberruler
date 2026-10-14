@@ -16,7 +16,7 @@ def rastrigin(x):
 d = 5
 lower_bounds = np.full(d, -5.12)
 upper_bounds = np.full(d, 5.12)
-copies = [
+transformed_objectives = [
     rr.transform_objective(rastrigin, lower_bounds, upper_bounds, seed=k)
     for k in range(10)
 ]
@@ -37,10 +37,10 @@ def features(X, y, feature_type):
 X = np.random.default_rng(0).uniform(lower_bounds, upper_bounds, size=(50 * d, d))
 for feature_type in ("value", "rank"):
     original = features(X, rastrigin(X), feature_type)
-    transformed = [features(X, copy(X), feature_type) for copy in copies]
+    transformed = [features(X, h(X), feature_type) for h in transformed_objectives]
     for name, value in original.items():
-        values = [copy_features[name] for copy_features in transformed]
+        values = [row[name] for row in transformed]
         print(
             f"{feature_type:5} {name:12}  original {value:6.3f}"
-            f"  copies {min(values):6.3f} to {max(values):6.3f}"
+            f"  transformed objectives {min(values):6.3f} to {max(values):6.3f}"
         )

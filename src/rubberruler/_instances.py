@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 
 from rubberruler._errors import check_int, error, three_lines
 from rubberruler._seeding import generator
-from rubberruler._transformations import MonotoneTransformation, sample_psi
+from rubberruler._transformations import StrictlyIncreasingTransformation, sample_psi
 
 try:
     import ioh
@@ -169,7 +169,9 @@ def transform(instance: ProblemInstance) -> ProblemInstance:
     )
 
 
-def transformation_of(instance: ProblemInstance) -> MonotoneTransformation | None:
+def transformation_of(
+    instance: ProblemInstance,
+) -> StrictlyIncreasingTransformation | None:
     """Return g of a transformed instance, or None for an original instance."""
     if not instance.is_transformed:
         return None
@@ -358,13 +360,13 @@ def _bounds(dimension: int) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
 @functools.lru_cache(maxsize=256)
 def _transformation(
     seed: int, function_id: int, instance_number: int, dimension: int
-) -> MonotoneTransformation:
+) -> StrictlyIncreasingTransformation:
     bbob = _bbob(function_id, instance_number, dimension)
     lower_bounds, upper_bounds = _bounds(dimension)
     rng = generator("fmax", seed, "bbob", function_id, instance_number, dimension)
     sample = rng.uniform(lower_bounds, upper_bounds, size=(FMAX_SAMPLES, dimension))
     f_max = float(np.max(np.asarray(bbob(sample), dtype=np.float64)))
-    return MonotoneTransformation(
+    return StrictlyIncreasingTransformation(
         sample_psi(seed, function_id, instance_number, dimension),
         f_min=float(bbob.optimum.y),
         f_max=f_max,

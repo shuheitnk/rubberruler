@@ -4,7 +4,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from rubberruler._transformations import (
-    MonotoneTransformation,
+    StrictlyIncreasingTransformation,
     log_density,
     sample_psi,
 )
@@ -58,7 +58,7 @@ def test_g_is_the_identity_above_1(
     keys: tuple[int, int, int, int], above: float
 ) -> None:
     """g(y) = z for z > 1, so g is continuous at 1 and the identity above."""
-    g = MonotoneTransformation(sample_psi(*keys), f_min=0.0, f_max=1.0)
+    g = StrictlyIncreasingTransformation(sample_psi(*keys), f_min=0.0, f_max=1.0)
     assert g(np.array([above]))[0] == above
     assert g(np.array([1.0]))[0] == pytest.approx(1.0, abs=1e-12)
 
@@ -68,7 +68,7 @@ def test_g_is_the_identity_above_1(
 def test_g_rescales_with_f_min_and_f_max(keys: tuple[int, int, int, int]) -> None:
     """z = max((y - f_min) / (f_max - f_min), 0) and g = psi(z) on [0, 1]."""
     psi = sample_psi(*keys)
-    g = MonotoneTransformation(psi, f_min=10.0, f_max=30.0)
+    g = StrictlyIncreasingTransformation(psi, f_min=10.0, f_max=30.0)
     y = np.array([0.0, 10.0, 15.0, 20.0, 30.0, 50.0])
     expected = np.array([0.0, 0.0, float(psi(0.25)), float(psi(0.5)), 1.0, 2.0])
     np.testing.assert_allclose(g(y), expected, rtol=0, atol=1e-15)
@@ -80,6 +80,6 @@ def test_g_is_increasing_on_the_objective_range(
     keys: tuple[int, int, int, int],
 ) -> None:
     """g is strictly increasing from f_min upwards."""
-    g = MonotoneTransformation(sample_psi(*keys), f_min=-3.0, f_max=5.0)
+    g = StrictlyIncreasingTransformation(sample_psi(*keys), f_min=-3.0, f_max=5.0)
     values = g(np.linspace(-3.0, 20.0, 2001))
     assert np.all(np.diff(values) > 0)

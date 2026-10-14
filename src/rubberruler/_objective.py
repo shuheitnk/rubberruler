@@ -20,9 +20,9 @@ def transform_objective(
     seed: int,
     n_samples: int = 10_000,
 ) -> Callable[[NDArray[np.float64]], float | NDArray[np.float64]]:
-    """Return a copy of ``objective`` stretched by a random rubber ruler: g(f(x)).
+    """Return the transformed objective g(f(x)): ``objective`` under a rubber ruler.
 
-    Use it to augment your own training data with transformed copies of your
+    Use it to augment your own training data with transformed objectives of your
     problems. g is strictly increasing, so the order of any two values, and with it
     every rank-based feature, stays the same, while value-based features change.
 
@@ -45,7 +45,7 @@ def transform_objective(
         upper_bounds: The upper end of the search range, of shape (d,).
         seed: An int from 0 to 2**32 - 1. psi depends only on ``seed``, and the
             same ``seed`` gives the same psi for every objective. Pass a different
-            seed for each copy, such as ``seed=k`` for the k-th copy.
+            seed for each transformed objective, such as ``seed=k`` for the k-th.
         n_samples: The number of points that set the smallest and largest value,
             at least 2. objective is called once for each.
     """
@@ -55,7 +55,7 @@ def transform_objective(
         seed,
         minimum=0,
         maximum=MAX_SEED,
-        example="a different int for each copy, such as seed=0",
+        example="a different int for each transformed objective, such as seed=0",
     )
     n_samples = check_int(
         "n_samples", n_samples, minimum=2, example="an int such as n_samples=10_000"

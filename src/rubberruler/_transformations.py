@@ -52,7 +52,7 @@ def objective_psi(seed: int) -> PchipInterpolator:
 
 
 @dataclass(frozen=True)
-class MonotoneTransformation:
+class StrictlyIncreasingTransformation:
     """g(y): rescale y by f_min and f_max, apply psi up to 1, and the identity above."""
 
     psi: PchipInterpolator

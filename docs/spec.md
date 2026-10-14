@@ -46,11 +46,13 @@ The code, the docstrings, the error messages, the card, and the README use only 
 | τ ∈ {value, rank} | feature type | `feature_type` |
 | φ_p | features | `features` |
 | predictor_τ | performance predictor | `predictor` |
-| g_{ψ,p} | monotone transformation | `transform` |
+| g_{ψ,p} | strictly increasing transformation | `transform` |
 | f (the user's objective function) | objective | `objective` (the parameter of `transform_objective`) |
+| g(f(x)) for the user's f | transformed objective | the return value of `transform_objective` (a function; distinct from a transformed test instance, which is a BBOB `ProblemInstance`) |
 | R²_τ(Q) | coefficient of determination | `r2_score(..., instances=Q)` |
 | R²_τ(P_test) − R²_τ(P̃_test) | degradation | `degradation` |
 | τ* | selected feature type | `selected_feature_type` |
+| (none) | pre-check | `precheck_algorithms`, `precheck_extractor`, and `precheck_predictor` (private): the checks of 5.5, which try each input once on a small problem before the heavy computation |
 
 - Names are not abbreviated (`dimension`, not `dim`).
 - No public function starts with `test` and no public class starts with `Test` (pytest would collect them when a user imports them into a test).
@@ -90,7 +92,7 @@ value                0.71                     0.42          0.29
 rank                 0.66                     0.63          0.03
 
 With value-based features, the predictor does not generalize to
-monotone transformations of the objective.
+strictly increasing transformations of the objective.
 
 3 algorithms, 2400 train, 240 test, 240 transformed test
 seed=42
@@ -102,8 +104,8 @@ seed=42
 - Comparisons always use the values before rounding. The number of displayed digits is never used for a comparison.
 - `RANK` or `VALUE` in the first line is `selected_feature_type` in upper case. The second line names the selected feature type first and joins the two values with `>` if the values before rounding differ, and with `=` if they are equal.
 - The two lines of meaning depend on the selected feature type.
-  - For rank: `With value-based features, the predictor does not generalize to` / `monotone transformations of the objective.`
-  - For value: `Value-based features still help the predictor after` / `monotone transformations of the objective.`
+  - For rank: `With value-based features, the predictor does not generalize to` / `strictly increasing transformations of the objective.`
+  - For value: `Value-based features still help the predictor after` / `strictly increasing transformations of the objective.`
 - If the absolute difference δ of the two R² values on the transformed test instances (before rounding) is below 0.01, the line `The difference is {δ:.4f} (below 0.01), so treat this answer as weak.` follows the meaning.
 - If the larger R² on the transformed test instances (before rounding) is below 0.1, the two lines `Both R^2 values are below 0.1, so this answer is weak.` / `Check the extractor and the predictor first.` follow the meaning (after the line on the difference, if present). With either feature type, the predictor then explains almost none of the performance, so the answer is weak, and the extractor and the predictor should be revised first (D36).
 - The last two lines are the conditions. The first is the number of algorithms and the size of each instance set, joined by `, `. The second is `seed` and the settings that differ from their defaults, in the order of the table in 5.2, joined by `, `. A line longer than 80 characters is broken at a `, `, and a broken line keeps the `,` at its end (at most 80 characters including the `,`).
@@ -372,7 +374,7 @@ def transform_objective(
 - `transform` applies a transformation determined only by (master seed, function, instance number, dimension). The same instance always receives the same transformation. Transforming a transformed instance again is an error.
 - `compute_features` stores the feature type in `DataFrame.attrs["feature_type"]` of its return value. `fit_predictor` records it in the `FittedPredictor`, and `r2_score` raises an error if the feature type or the columns of the features differ from those at fitting.
 - `fit_predictor` fits one predictor per algorithm (4.3). It uses only the rows of `instances`.
-- `transform_objective` calls neither `run_test` nor the other components. It receives the user's objective function, not a BBOB instance, and returns a function that returns g(objective(x)) (6.7). `seed` is a required argument without a default (with a default, `[rr.transform_objective(f, lb, ub) for _ in range(10)]` would return the same transformation 10 times).
+- `transform_objective` calls neither `run_test` nor the other components. It receives the user's objective function, not a BBOB instance, and returns the transformed objective, a function that returns g(objective(x)) (6.7). `seed` is a required argument without a default (with a default, `[rr.transform_objective(f, lb, ub) for _ in range(10)]` would return the same transformation 10 times).
 
 ### 5.5 Pre-checks (R-CHK-1)
 
@@ -442,7 +444,7 @@ Warnings:
 
 | Use | domain | keys | How the random numbers are drawn |
 |---|---|---|---|
-| Monotone transformation ψ | `"transform"` | `"bbob"`, function_id, instance_number, dimension | 6.3 |
+| ψ of the strictly increasing transformation | `"transform"` | `"bbob"`, function_id, instance_number, dimension | 6.3 |
 | Uniform sample for f̂_max | `"fmax"` | `"bbob"`, function_id, instance_number, dimension | `rng.uniform(lower_bounds, upper_bounds, size=(10_000, d))` |
 | Sample X for the features | `"features"` | `"bbob"`, function_id, instance_number, dimension | `rng.uniform(lower_bounds, upper_bounds, size=(n, d))` |
 | ψ of `transform_objective` | `"transform"` | `"objective"` | 6.7 |
@@ -469,7 +471,7 @@ Warnings:
 - BBOB comes from `ioh`: `ioh.get_problem(function_id, instance_number, dimension, ioh.ProblemClass.BBOB)`.
 - f_min is `problem.optimum.y`. f̂_max is the maximum over 10⁴ points drawn uniformly from the search range (with the `"fmax"` seed).
 
-### 6.3 Monotone Transformation (R-TRF-1)
+### 6.3 Strictly Increasing Transformation (R-TRF-1)
 
 The transformation is built by the following steps, with random numbers drawn in this order. There is one transformation per instance, determined only by (master seed, function, instance number, dimension).
 
@@ -521,9 +523,9 @@ The properties ψ(0) = 0 and ψ(1) = 1 are checked with an absolute tolerance of
 - If all values of J are equal (the denominator is 0), `r2_score` returns `nan` and logs `R^2 is undefined because all performance values are equal; returned nan`. Equality is decided by comparing the values of J directly (not by relying on the rounding of the mean or of the denominator: the mean of equal values can differ from that value by rounding, in which case the denominator is not 0 but about 1e-33, and R² becomes a value such as −6×10³¹).
 - The values of the table: `r2_test = R²(P_test)`, `r2_transformed_test = R²(P̃_test)`, `degradation = r2_test − r2_transformed_test`.
 
-### 6.7 Monotone Transformation of Any Objective Function (R-AUG-1)
+### 6.7 Strictly Increasing Transformation of Any Objective Function (R-AUG-1)
 
-`rr.transform_objective(objective, lower_bounds, upper_bounds, *, seed, n_samples=10_000)` returns h(x) = g(objective(x)). g follows the formula of the paper and is built by the following steps. The key `"objective"` does not overlap with the keys of BBOB (which start with `"bbob"`).
+`rr.transform_objective(objective, lower_bounds, upper_bounds, *, seed, n_samples=10_000)` returns the transformed objective h(x) = g(objective(x)). g follows the formula of the paper and is built by the following steps. The key `"objective"` does not overlap with the keys of BBOB (which start with `"bbob"`).
 
 1. `lower_bounds` and `upper_bounds` are converted to float64 arrays. Both are one-dimensional with at least one element, have the same shape, are finite, and satisfy lower < upper in every dimension. d is their length.
 2. `rng = numpy.random.default_rng(derive_seed("fmax", seed, "objective"))` and `X = rng.uniform(lower_bounds, upper_bounds, size=(n_samples, d))`. `objective` is called on each row of X, one point at a time, and each value is converted with `float()`.
@@ -575,7 +577,7 @@ Test values (the sphere function `numpy.sum(x**2, axis=-1)`, d = 2, bounds [−5
 
 ## 8. Structure of the README
 
-The readers of the README know BBOB, CMA-ES, ELA, algorithm selection, and invariance to monotone transformations, as participants of GECCO do, but they do not know rubberruler. Reading from the top, a reader obtains the first card and can state its meaning without getting lost. How to connect each tool is in `examples/README.md` (D42).
+The readers of the README know BBOB, CMA-ES, ELA, algorithm selection, and invariance to strictly increasing transformations, as participants of GECCO do, but they do not know rubberruler. Reading from the top, a reader obtains the first card and can state its meaning without getting lost. How to connect each tool is in `examples/README.md` (D42).
 
 ### 8.1 Writing Rules
 
@@ -630,7 +632,7 @@ The page starts with one sentence, the table of example scripts (script, what it
    - A Pipeline that fills NaN: `make_pipeline(SimpleImputer(), RandomForestRegressor(random_state=0))`. A link to `examples/modular_ela.py`.
    - PyTorch (`#pytorch`): `pip install torch` (the version checked and Python 3.12). A small network with `fit` and `predict`.
 4. **Another predictor on the same data** (`#another-predictor-on-the-same-data`): an example that measures R² of another predictor on the same performance data with `rr.fit_predictor` and `rr.r2_score`.
-5. **Augmenting training data** (`#augmenting-training-data`): an example that applies 10 transformations with different `seed` values to Rastrigin written with NumPy, through `rr.transform_objective`, and compares the value-based and rank-based features of the original and of the copies (the same code as `examples/augmentation.py`, and its output). One sentence states that values better than the sample (near the optimum) are not stretched.
+5. **Augmenting training data** (`#augmenting-training-data`): an example that applies 10 transformations with different `seed` values to Rastrigin written with NumPy, through `rr.transform_objective`, and compares the value-based and rank-based features of the original and of the transformed objectives (the same code as `examples/augmentation.py`, and its output). One sentence states that values better than the sample (near the optimum) are not stretched.
 
 ---
 

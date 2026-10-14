@@ -16,7 +16,7 @@ value                0.71                     0.42          0.29
 rank                 0.66                     0.63          0.03
 
 With value-based features, the predictor does not generalize to
-monotone transformations of the objective.
+strictly increasing transformations of the objective.
 
 3 algorithms, 2400 train, 240 test, 240 transformed test
 seed=42"""
@@ -59,7 +59,7 @@ def test_value_wins_with_its_own_meaning() -> None:
     assert lines[1] == "  R^2 on transformed test: value 0.70 > rank 0.50"
     assert lines[7:9] == [
         "Value-based features still help the predictor after",
-        "monotone transformations of the objective.",
+        "strictly increasing transformations of the objective.",
     ]
 
 

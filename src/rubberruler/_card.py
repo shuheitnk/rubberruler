@@ -26,11 +26,11 @@ WEAK_R2_NOTE = (
 MEANING: dict[FeatureType, tuple[str, str]] = {
     "rank": (
         "With value-based features, the predictor does not generalize to",
-        "monotone transformations of the objective.",
+        "strictly increasing transformations of the objective.",
     ),
     "value": (
         "Value-based features still help the predictor after",
-        "monotone transformations of the objective.",
+        "strictly increasing transformations of the objective.",
     ),
 }
 

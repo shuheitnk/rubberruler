@@ -113,7 +113,7 @@ value                0.41                     0.23          0.17
 rank                 0.30                     0.31         -0.01
 
 With value-based features, the predictor does not generalize to
-monotone transformations of the objective.
+strictly increasing transformations of the objective.
 
 3 algorithms, 2400 train, 240 test, 240 transformed test
 seed=42, dimension=2 (default 10), budget_per_dimension=100 (default 1000),
@@ -172,7 +172,7 @@ The package exports ten names. Besides `run_test`, each stage of the test is ava
 | `run_test(portfolio, feature_extractor, predictor, ...)` | Run the whole test and return the result; `print(result)` shows the card |
 | `bbob_instances(...)` | Create the training, test, and transformed test instances |
 | `transform(instance)` | Return the transformed instance, whose objective is g(f(x)) |
-| `transform_objective(objective, lower_bounds, upper_bounds, seed=...)` | Return g(f(x)) for your own objective f, with a random rubber ruler |
+| `transform_objective(objective, lower_bounds, upper_bounds, seed=...)` | Return the transformed objective g(f(x)) for your own objective f, with a random rubber ruler |
 | `measure_performance(portfolio, instances, ...)` | Measure the performance J of every algorithm on every instance |
 | `compute_features(feature_extractor, instances, feature_type, ...)` | Compute the features with one feature type |
 | `fit_predictor(predictor, features, performance, instances=...)` | Fit one copy of the predictor per algorithm |

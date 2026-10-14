@@ -153,7 +153,7 @@ value                0.71                     0.42          0.29
 rank                 0.66                     0.63          0.03
 
 With value-based features, the predictor does not generalize to
-monotone transformations of the objective.
+strictly increasing transformations of the objective.
 
 3 algorithms, 2400 train, 240 test, 240 transformed test
 seed=42
@@ -240,7 +240,7 @@ The documentation is divided into the four kinds of Diátaxis, so that you can e
 | Tutorial | The first success | Quickstart of the README: run `examples/quickstart.py` with small settings and read the card |
 | How-to | Connecting what you have | Usage › Inputs of the README (the three types) and `examples/README.md` (installation and code for ModularCMAES, ModDE, pymoo, pycma, Nevergrad, pflacco, DeepELA, and PyTorch; connecting a function of another form with a one-line lambda; filling NaN with a `Pipeline`; another predictor on the same data; augmenting training data). Resuming after an interruption is in Usage › Notes of the README |
 | Reference | The exact specification | The docstrings (each starting with the symbol of the paper, with the accepted values) and the tables of Usage › Settings and Usage › API of the README (the 10 names and the arguments) |
-| Explanation | Why it works this way | How it works of the README: the four stages, why the measurement uses monotone transformations, why the degradation does not decide, and the figure of the rubber rulers |
+| Explanation | Why it works this way | How it works of the README: the four stages, why the measurement uses strictly increasing transformations, why the degradation does not decide, and the figure of the rubber rulers |
 
 - The order of the sections of the README and its writing rules follow Chapter 8 of `spec.md` (opening → Installation → Quickstart → Usage → How it works → Examples → Versioning → Citation → Development → License). The main path (installing, the quickstart, and how to read the card) comes first, notes for only some environments go to Installation, and details per tool go to `examples/README.md`.
 - The code of the README and of `examples/README.md` runs in CI, so the examples never go stale. The tutorial (the first answer) runs with the small settings, and its card must be the same, to the character, as the card shown. The other code is checked to run with the smallest settings. When an upgrade of a dependency changes the numbers, the card of the README is pasted again (the versions are fixed in `uv.lock`, so the cards can be compared; Chapter 4 of `implementation.md`).

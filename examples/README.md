@@ -400,9 +400,9 @@ Here `result` is the one from [quickstart.py](quickstart.py), and `r2` is the RÂ
 
 ## Augmenting training data
 
-If the card says rank but you want to keep value-based features, train the predictor on transformed copies of your own problems too, so that it learns features under many rubber rulers. `rr.transform_objective` applies a random rubber ruler to any objective: it returns g(f(x)), where g is built as for BBOB in [How it works](../README.md#how-it-works), but rescales f by the smallest and the largest of 10,000 random values of f. Pass a different `seed` for each copy.
+If the card says rank but you want to keep value-based features, train the predictor on transformed objectives of your own problems too, so that it learns features under many rubber rulers. `rr.transform_objective` applies a random rubber ruler to any objective: it returns g(f(x)), where g is built as for BBOB in [How it works](../README.md#how-it-works), but rescales f by the smallest and the largest of 10,000 random values of f. Pass a different `seed` for each transformed objective.
 
-This example makes ten copies of the Rastrigin function and compares two features of the quickstart on the original and on the copies:
+This example makes ten transformed objectives of the Rastrigin function and compares two features of the quickstart on the original and on the transformed objectives:
 
 ```python
 import numpy as np
@@ -418,7 +418,7 @@ def rastrigin(x):
 d = 5
 lower_bounds = np.full(d, -5.12)
 upper_bounds = np.full(d, 5.12)
-copies = [
+transformed_objectives = [
     rr.transform_objective(rastrigin, lower_bounds, upper_bounds, seed=k)
     for k in range(10)
 ]
@@ -439,24 +439,24 @@ def features(X, y, feature_type):
 X = np.random.default_rng(0).uniform(lower_bounds, upper_bounds, size=(50 * d, d))
 for feature_type in ("value", "rank"):
     original = features(X, rastrigin(X), feature_type)
-    transformed = [features(X, copy(X), feature_type) for copy in copies]
+    transformed = [features(X, h(X), feature_type) for h in transformed_objectives]
     for name, value in original.items():
-        values = [copy_features[name] for copy_features in transformed]
+        values = [row[name] for row in transformed]
         print(
             f"{feature_type:5} {name:12}  original {value:6.3f}"
-            f"  copies {min(values):6.3f} to {max(values):6.3f}"
+            f"  transformed objectives {min(values):6.3f} to {max(values):6.3f}"
         )
 ```
 
 It prints:
 
 ```text
-value kurtosis      original -0.233  copies -0.920 to  4.374
-value quadratic_r2  original  0.562  copies  0.422 to  0.566
-rank  kurtosis      original -1.200  copies -1.200 to -1.200
-rank  quadratic_r2  original  0.526  copies  0.526 to  0.526
+value kurtosis      original -0.233  transformed objectives -0.920 to  4.374
+value quadratic_r2  original  0.562  transformed objectives  0.422 to  0.566
+rank  kurtosis      original -1.200  transformed objectives -1.200 to -1.200
+rank  quadratic_r2  original  0.526  transformed objectives  0.526 to  0.526
 ```
 
-The value-based features spread over the copies, while the rank-based ones stay exactly the same, because g keeps the order of the values. Measure your algorithms on the copies as on the originals and add them to the training data.
+The value-based features spread over the transformed objectives, while the rank-based ones stay exactly the same, because g keeps the order of the values. Measure your algorithms on the transformed objectives as on the originals and add them to the training data.
 
 Values better than all of the random ones, near the optimum, are only rescaled, not stretched; the random sample points that features are computed from mostly lie in the stretched range.
