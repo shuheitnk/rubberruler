@@ -112,7 +112,7 @@ seed=42
   - A sequence of instance numbers is converted to a sorted tuple of integers before it is compared with the default. A contiguous sequence is shown as `train_instance_numbers=11-20 (default 11-110)`, a non-contiguous one as `train_instance_numbers=12 numbers (default 11-110)`, and a single number as `test_instance_numbers=5 (default 1-10)`.
   - `n_jobs` and `cache_dir` do not change the result and are not shown.
 - If there are warnings, their counts come last, together (5.6).
-- `rich.print(result)` draws the same parts in a panel titled `Rubber Ruler Test` (the `__rich__` method of the result): the answer in bold green, the table with the row of the selected feature type in bold, the cautions (the lines on a weak answer) and the warnings in yellow, and the conditions dimmed. The text of `print(result)` does not change.
+- `rich.print(result)` draws the same parts in a panel titled `Rubber Ruler Test` (the `__rich__` method of the result): the answer in bold green, the table with the row of the selected feature type in bold, the cautions (the lines on a weak answer) and the warnings in yellow, and the conditions dimmed. The text of `print(result)` does not change. The borders of the panel are decorations of rich, which may use non-ASCII characters only when the encoding of the output is UTF-8 (D35).
 
 ### 3.3 Decision Rule (R-DEC-1)
 
@@ -274,7 +274,7 @@ def run_test(
 - Order of processing: checks of the settings → pre-checks (5.5) → preparing instances → measuring performance → computing features → fitting predictors and scoring → result → writing the figure of the answer (3.4; when `cache_dir` is set).
 - Output on stderr (R-UX-3): the plan line, the four stages with their progress, and the line on the written figure (3.4). The progress is drawn with rich.
 
-  - In a terminal or a notebook (rich's `Console.is_interactive` or `is_jupyter`), each stage is drawn: a stage with a count shows a spinner, a bar of 20 characters, the percentage, the count, and the time left while it runs, and the time it took when it ends; a stage without a count shows a spinner while it runs. Each stage ends with a check mark. The prefix `rubberruler:` of a message is bold. With a console encoding that does not start with `utf`, rich draws an ASCII spinner and an ASCII bar, and the check mark is a space.
+  - In a terminal or a notebook (rich's `Console.is_interactive` or `is_jupyter`), each stage is drawn: a stage with a count shows a spinner, a bar of 20 characters, the percentage, the count, and the time left while it runs, and the time it took when it ends; a stage without a count shows a spinner while it runs. Each stage ends with a check mark. The prefix `rubberruler:` of a message is bold. With a console encoding that does not start with `utf`, rich draws an ASCII spinner and an ASCII bar, and the check mark is a space. These decorations are the only characters on stderr that may be non-ASCII, and only in UTF-8 (D35).
 
     ```
     rubberruler: 43,200 runs (0 cached, 43,200 to run) in .rubberruler/
