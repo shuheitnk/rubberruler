@@ -9,16 +9,18 @@ from rubberruler._card import DEFAULT_CONFIG, RunConfig, render, select
 
 EXAMPLE_CARD = """\
 Rubber Ruler Test: use RANK-based features
-  R^2 on transformed test: rank 0.63 > value 0.42
+  R^2 on the transformed test instances: rank 0.63 > value 0.42
 
-feature type   R^2 (test)   R^2 (transformed test)   degradation
-value                0.71                     0.42          0.29
-rank                 0.66                     0.63          0.03
+                       R^2 on                       R^2 on
+feature type   test instances   transformed test instances   degradation
+value                    0.71                         0.42          0.29
+rank                     0.66                         0.63          0.03
 
 With value-based features, the predictor does not generalize to
 strictly increasing transformations of the objective.
 
-3 algorithms, 2400 train, 240 test, 240 transformed test
+3 algorithms, 2400 training instances, 240 test instances,
+240 transformed test instances
 seed=42"""
 
 
@@ -56,8 +58,8 @@ def test_value_wins_with_its_own_meaning() -> None:
     """value is chosen when its transformed R^2 is larger."""
     lines = card(make_table((0.8, 0.7), (0.6, 0.5))).split("\n")
     assert lines[0] == "Rubber Ruler Test: use VALUE-based features"
-    assert lines[1] == "  R^2 on transformed test: value 0.70 > rank 0.50"
-    assert lines[7:9] == [
+    assert lines[1] == "  R^2 on the transformed test instances: value 0.70 > rank 0.50"
+    assert lines[8:10] == [
         "Value-based features still help the predictor after",
         "strictly increasing transformations of the objective.",
     ]
@@ -68,9 +70,11 @@ def test_a_tie_selects_rank_with_an_equals_sign() -> None:
     table = make_table((0.9, 0.5), (0.7, 0.5))
     assert select(table) == "rank"
     lines = card(table).split("\n")
-    assert lines[1] == "  R^2 on transformed test: rank 0.500 = value 0.500"
     assert (
-        lines[9]
+        lines[1] == "  R^2 on the transformed test instances: rank 0.500 = value 0.500"
+    )
+    assert (
+        lines[10]
         == "The difference is 0.0000 (below 0.01), so treat this answer as weak."
     )
 
@@ -78,15 +82,19 @@ def test_a_tie_selects_rank_with_an_equals_sign() -> None:
 def test_close_values_use_three_digits_and_a_weak_note() -> None:
     """Same at 2 digits gives 3 digits in the table and line 2."""
     lines = card(make_table((0.7123, 0.6312), (0.6655, 0.634))).split("\n")
-    assert lines[1] == "  R^2 on transformed test: rank 0.634 > value 0.631"
     assert (
-        lines[4] == "value               0.712                    0.631         0.081"
+        lines[1] == "  R^2 on the transformed test instances: rank 0.634 > value 0.631"
     )
     assert (
-        lines[5] == "rank                0.665                    0.634         0.031"
+        lines[5]
+        == "value                   0.712                        0.631         0.081"
     )
     assert (
-        lines[9]
+        lines[6]
+        == "rank                    0.665                        0.634         0.031"
+    )
+    assert (
+        lines[10]
         == "The difference is 0.0028 (below 0.01), so treat this answer as weak."
     )
 
@@ -96,7 +104,7 @@ def test_comparison_uses_unrounded_values() -> None:
     table = make_table((0.5, 0.6344), (0.5, 0.634))
     assert select(table) == "value"
     assert card(table).split("\n")[1] == (
-        "  R^2 on transformed test: value 0.634 > rank 0.634"
+        "  R^2 on the transformed test instances: value 0.634 > rank 0.634"
     )
 
 
@@ -116,17 +124,19 @@ def test_a_small_r2_for_both_feature_types_is_weak() -> None:
     """The larger R^2 on the transformed test below 0.1 adds a weak note of
     two lines."""
     lines = card(make_table((0.3, -0.04), (0.2, 0.05))).split("\n")
-    assert lines[1] == "  R^2 on transformed test: rank 0.05 > value -0.04"
-    assert lines[9:12] == [*LOW_R2_NOTE, ""]
+    assert (
+        lines[1] == "  R^2 on the transformed test instances: rank 0.05 > value -0.04"
+    )
+    assert lines[10:13] == [*LOW_R2_NOTE, ""]
     shown = card(make_table((0.3, 0.02), (0.2, 0.0999))).split("\n")  # shows 0.10
-    assert shown[9:11] == LOW_R2_NOTE
+    assert shown[10:12] == LOW_R2_NOTE
     assert "weak" not in card(make_table((0.3, 0.02), (0.2, 0.1)))
 
 
 def test_both_weak_notes_can_appear_together() -> None:
     """A small difference and a small R^2 give both notes, in this order."""
     lines = card(make_table((0.3, 0.051), (0.2, 0.05))).split("\n")
-    assert lines[9:12] == [
+    assert lines[10:13] == [
         "The difference is 0.0010 (below 0.01), so treat this answer as weak.",
         *LOW_R2_NOTE,
     ]
@@ -144,7 +154,7 @@ def test_changed_settings_follow_the_seed_and_wrap_at_the_separator() -> None:
         seed=7,
     )
     lines = card(make_table((0.7, 0.4), (0.6, 0.5)), config).split("\n")
-    sizes = "3 algorithms, 2400 train, 240 test, 240 transformed test"
+    sizes = "240 transformed test instances"
     conditions = lines[lines.index(sizes) + 1 :]
     assert conditions == [
         "seed=7 (default 42), dimension=20 (default 10),",
@@ -188,14 +198,18 @@ def test_a_single_instance_number_is_shown_as_itself() -> None:
 def test_warnings_come_last() -> None:
     """Warnings are listed under the card."""
     failed = (
-        "2 runs failed; their best value so far was used (+inf if none) (see the log)"
+        "2 runs failed; their best value so far was used "
+        "(+inf if there was none; see the log)"
     )
     text = card(
         make_table((0.71, 0.42), (0.66, 0.63)),
         warnings=(failed, "12 instances have NaN features"),
     )
     assert text == EXAMPLE_CARD + (
-        f"\n\nWarnings:\n  {failed}\n  12 instances have NaN features"
+        "\n\nWarnings:"
+        "\n  2 runs failed; their best value so far was used"
+        "\n    (+inf if there was none; see the log)"
+        "\n  12 instances have NaN features"
     )
 
 
@@ -218,7 +232,8 @@ def test_negative_zero_is_shown_as_zero() -> None:
     """A degradation of -0.0005 at 2 digits is 0.00, not -0.00."""
     lines = card(make_table((0.6, 0.5), (0.2995, 0.3))).split("\n")
     assert (
-        lines[5] == "rank                 0.30                     0.30          0.00"
+        lines[6]
+        == "rank                     0.30                         0.30          0.00"
     )
 
 
@@ -230,7 +245,10 @@ def weak_card_with_a_warning() -> _card.Card:
         n_algorithms=3,
         set_sizes=(2400, 240, 240),
         config=DEFAULT_CONFIG,
-        warnings=("1 run failed; its best value so far was used (+inf if none)",),
+        warnings=(
+            "1 run failed; its best value so far was used "
+            "(+inf if there was none; see the log)",
+        ),
     )
 
 
@@ -246,7 +264,7 @@ def test_rich_draws_the_parts_of_the_card_in_a_panel() -> None:
     assert "Rubber Ruler Test" in drawn
     assert "use RANK-based features" in drawn
     # The header and the rows of the table are spaced differently in the panel.
-    assert all(line.strip() in drawn for line in lines[1:3] + lines[6:])
+    assert all(line.strip() in drawn for line in lines[1:3] + lines[7:])
     assert all(cell in drawn for row in parts.rows for cell in row)
     assert "Warnings:" in drawn
 

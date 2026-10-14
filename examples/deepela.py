@@ -57,7 +57,8 @@ model = deep_ela.load_large_50d_v1(stride=1)
 def deep_ela_features(X, y):
     if X.shape[1] > 11:
         raise ValueError(
-            f"DeepELA's large models take at most 11 dimensions, got {X.shape[1]}"
+            "DeepELA's large models take at most 11 dimensions, "
+            f"but received {X.shape[1]}"
         )
     torch.manual_seed(0)  # predict() permutes the input slots with torch's global RNG
     return model(X, y)

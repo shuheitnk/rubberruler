@@ -152,7 +152,7 @@ def test_other_feature_types_or_columns_stop(split: InstanceSplit) -> None:
         LinearRegression(), rank, performance, instances=split.train
     )
     value = make_features(split, "value")
-    with pytest.raises(rr.RubberRulerError, match="got value features") as raised:
+    with pytest.raises(rr.RubberRulerError, match="received value features") as raised:
         rr.r2_score(fitted, value, performance, instances=split.test)
     assert_three_lines(raised.value)
     wider = make_features(split, "rank", columns=4)
@@ -488,5 +488,5 @@ def test_features_and_performance_must_be_dataframes(
     performance = make_performance(features)
     arguments: dict[str, object] = {"features": features, "performance": performance}
     arguments[wrong] = arguments[wrong].to_numpy()  # pyright: ignore[reportAttributeAccessIssue]
-    with pytest.raises(rr.RubberRulerError, match=f"got {wrong} of type ndarray"):
+    with pytest.raises(rr.RubberRulerError, match=f"received {wrong} of type ndarray"):
         rr.fit_predictor(LinearRegression(), instances=split.train, **arguments)  # pyright: ignore[reportArgumentType]

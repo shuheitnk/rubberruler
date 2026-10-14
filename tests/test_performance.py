@@ -264,7 +264,7 @@ def test_failed_runs_are_logged_and_counted(
     ]
     assert messages[-1] == (
         f"{len(failed)} runs failed; their best value so far was used "
-        "(+inf if none) (see the log)"
+        "(+inf if there was none; see the log)"
     )
     assert f'run {first_run} of "flaky" on {first_id}' in messages[0]
 
@@ -509,12 +509,13 @@ def test_bad_settings_stop(
     [
         (
             1,
-            "1 run failed; its best value so far was used (+inf if none) (see the log)",
+            "1 run failed; its best value so far was used "
+            "(+inf if there was none; see the log)",
         ),
         (
             2,
-            "2 runs failed; their best value so far was used (+inf if none) "
-            "(see the log)",
+            "2 runs failed; their best value so far was used "
+            "(+inf if there was none; see the log)",
         ),
     ],
 )

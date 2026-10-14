@@ -146,23 +146,26 @@ The card is ordered answer, evidence, meaning, and conditions, so that a reader 
 
 ```
 Rubber Ruler Test: use RANK-based features
-  R^2 on transformed test: rank 0.63 > value 0.42
+  R^2 on the transformed test instances: rank 0.63 > value 0.42
 
-feature type   R^2 (test)   R^2 (transformed test)   degradation
-value                0.71                     0.42          0.29
-rank                 0.66                     0.63          0.03
+                       R^2 on                       R^2 on
+feature type   test instances   transformed test instances   degradation
+value                    0.71                         0.42          0.29
+rank                     0.66                         0.63          0.03
 
 With value-based features, the predictor does not generalize to
 strictly increasing transformations of the objective.
 
-3 algorithms, 2400 train, 240 test, 240 transformed test
+3 algorithms, 2400 training instances, 240 test instances,
+240 transformed test instances
 seed=42
 ```
 
 - The width is at most 80 characters. Numbers have two decimal places and are right-aligned. The characters are ASCII, and the text has no color (it reads the same in every terminal and in a log). `rich.print(result)` draws the same parts in a panel with color, for those who want it.
+- The card uses the full terms (training, test, and transformed test instances); where they do not fit in 80 characters, it breaks the line instead of abbreviating.
 - `seed` and the settings that differ from the defaults are listed in the last line (for example, `seed=42, dimension=20 (default 10)`). The card shows whether the result comes from small settings.
 - When the two R² values on the transformed test instances are equal to two decimal places, three decimal places are shown. If the difference is below 0.01, the answer is still given, with one added line of the form `The difference is 0.0042 (below 0.01), so treat this answer as weak.` (10.4).
-- Warnings are not printed during the run but counted together below the card (for example, `2 runs failed; their best value so far was used (+inf if none) (see the log)` and `12 instances have NaN features`). All kinds are in 5.6 of `spec.md`.
+- Warnings are not printed during the run but counted together below the card (for example, `2 runs failed; their best value so far was used (+inf if there was none; see the log)` and `12 instances have NaN features`). All kinds are in 5.6 of `spec.md`.
 - Jupyter shows the same text. To record the numbers, use `result.table` (a DataFrame).
 
 ---

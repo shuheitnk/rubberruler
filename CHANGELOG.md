@@ -9,6 +9,8 @@
 ### Changed
 
 - The card says "strictly increasing transformations of the objective" instead of "monotone transformations of the objective", the term of the paper. The answer and the numbers do not change.
+- The card uses the terms in full: "R^2 on the transformed test instances", a header of two lines over "test instances" and "transformed test instances", and "2400 training instances, 240 test instances, 240 transformed test instances". Lines that would exceed 80 characters are broken, and long warnings wrap. The figure of the answer names its blocks "test instances" and "transformed test instances".
+- Messages say "received" instead of "got" (for example, "transform received str."), and the warning on failed runs ends with "(+inf if there was none; see the log)".
 
 ## 0.1.0
 

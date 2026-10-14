@@ -183,7 +183,7 @@ def r2_score(
     """
     if not isinstance(fitted, FittedPredictor):  # pyright: ignore[reportUnnecessaryIsInstance]
         raise error(
-            f"r2_score got a {type(fitted).__name__} as fitted.",
+            f"r2_score received a {type(fitted).__name__} as fitted.",
             why="fitted must be a predictor fitted by rr.fit_predictor.",
             fix="pass the result of rr.fit_predictor(...).",
         )
@@ -194,7 +194,7 @@ def r2_score(
     algorithms, targets = performance_matrix(performance, selected, "r2_score")
     if algorithms != list(fitted.algorithms):
         raise error(
-            f"r2_score got performance for {algorithms}, but the predictor was "
+            f"r2_score received performance for {algorithms}, but the predictor was "
             f"fitted for {list(fitted.algorithms)}.",
             why="each algorithm has its own fitted predictor.",
             fix="pass the performance DataFrame that was given to fit_predictor.",
@@ -364,7 +364,7 @@ def feature_type_of(features: object, function: str) -> FeatureType:
     """The feature type in features.attrs; stop if it is not a DataFrame from it."""
     if not isinstance(features, pd.DataFrame):
         raise error(
-            f"{function} got features of type {type(features).__name__}.",
+            f"{function} received features of type {type(features).__name__}.",
             why="features must be a DataFrame from rr.compute_features.",
             fix='pass result.features["rank"] or the result of rr.compute_features.',
         )
@@ -374,7 +374,7 @@ def feature_type_of(features: object, function: str) -> FeatureType:
     if feature_type == "rank":
         return "rank"
     raise error(
-        f"{function} got features without a feature type in "
+        f"{function} received features without a feature type in "
         'features.attrs["feature_type"].',
         why="the feature type tells value-based and rank-based features apart.",
         fix='pass result.features["rank"] or the result of rr.compute_features.',
@@ -387,15 +387,15 @@ def check_same_features(
     """Stop if the features are not the kind the predictor was fitted on."""
     if feature_type != fitted.feature_type:
         raise error(
-            f"r2_score got {feature_type} features, but the predictor was fitted on "
-            f"{fitted.feature_type} features.",
+            f"r2_score received {feature_type} features, but the predictor was "
+            f"fitted on {fitted.feature_type} features.",
             why="a predictor fitted on one feature type cannot score the other.",
             fix=f'pass result.features["{fitted.feature_type}"], or fit a predictor '
             f"on the {feature_type} features.",
         )
     if tuple(columns) != fitted.feature_names:
         raise error(
-            f"r2_score got features with the columns {_names(columns)}, but the "
+            f"r2_score received features with the columns {_names(columns)}, but the "
             f"predictor was fitted on {_names(fitted.feature_names)}.",
             why="the predictor reads each feature by its column position.",
             fix="pass features from the same feature_extractor as in fit_predictor.",
@@ -416,7 +416,7 @@ def performance_matrix(
     """The algorithm names and the J of ``instances`` as a float64 array (m, |A|)."""
     if not isinstance(performance, pd.DataFrame):
         raise error(
-            f"{function} got performance of type {type(performance).__name__}.",
+            f"{function} received performance of type {type(performance).__name__}.",
             why="performance must be a DataFrame from rr.measure_performance.",
             fix="pass result.performance or the result of rr.measure_performance.",
         )
@@ -436,7 +436,7 @@ def rows_of(
     missing = [row for row in rows if row not in table.index]
     if missing:
         raise error(
-            f"{function} got {name} without a row for {_names(missing)}.",
+            f"{function} received {name} without a row for {_names(missing)}.",
             why=f"{function} uses the {name} of every instance in instances.",
             fix=f"pass {name} computed for these instances, such as the {name} of "
             "the same split.",

@@ -79,7 +79,7 @@ def test_twelve_dimensions_stop_in_the_precheck(
         "feature_extractor raised ValueError on f01_i011_d12 (value)."
     )
     assert isinstance(raised.value.__cause__, ValueError)
-    assert "at most 11 dimensions, got 12" in str(raised.value.__cause__)
+    assert "at most 11 dimensions, but received 12" in str(raised.value.__cause__)
     assert not (tmp_path / "runs").exists()
 
 

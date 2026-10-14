@@ -145,7 +145,7 @@ def test_bad_settings_stop_with_a_three_line_error(
 
 def test_transform_rejects_other_objects() -> None:
     """transform takes only a ProblemInstance."""
-    with pytest.raises(rr.RubberRulerError, match="transform got str") as raised:
+    with pytest.raises(rr.RubberRulerError, match="transform received str") as raised:
         rr.transform("f01_i001_d10")  # pyright: ignore[reportArgumentType]
     assert_three_lines(raised.value)
 
@@ -153,10 +153,10 @@ def test_transform_rejects_other_objects() -> None:
 @pytest.mark.parametrize(
     ("instances", "message"),
     [
-        (5, "got instances of type int"),
-        ([], "got no instances"),
-        (["f01_i001_d2"], "got str in instances"),
-        ("twice", "got f01_i001_d2 twice in instances"),
+        (5, "received instances of type int"),
+        ([], "received no instances"),
+        (["f01_i001_d2"], "received str in instances"),
+        ("twice", "received f01_i001_d2 twice in instances"),
     ],
 )
 def test_instances_that_are_not_instances_stop(instances: object, message: str) -> None:

@@ -106,16 +106,18 @@ With these small settings, it takes about half a minute on 24 CPUs and about fiv
 
 ```text
 Rubber Ruler Test: use RANK-based features
-  R^2 on transformed test: rank 0.31 > value 0.23
+  R^2 on the transformed test instances: rank 0.31 > value 0.23
 
-feature type   R^2 (test)   R^2 (transformed test)   degradation
-value                0.41                     0.23          0.17
-rank                 0.30                     0.31         -0.01
+                       R^2 on                       R^2 on
+feature type   test instances   transformed test instances   degradation
+value                    0.41                         0.23          0.17
+rank                     0.30                         0.31         -0.01
 
 With value-based features, the predictor does not generalize to
 strictly increasing transformations of the objective.
 
-3 algorithms, 2400 train, 240 test, 240 transformed test
+3 algorithms, 2400 training instances, 240 test instances,
+240 transformed test instances
 seed=42, dimension=2 (default 10), budget_per_dimension=100 (default 1000),
 n_runs=5 (default 31)
 ```

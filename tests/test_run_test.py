@@ -67,7 +67,8 @@ def test_the_card_is_the_str_and_the_repr(result: RubberRulerResult) -> None:
     assert repr(result) == text
     selected = result.selected_feature_type.upper()
     assert text.split("\n")[0] == f"Rubber Ruler Test: use {selected}-based features"
-    assert "3 algorithms, 4 train, 4 test, 4 transformed test" in text
+    assert "3 algorithms, 4 training instances, 4 test instances,\n" in text
+    assert "\n4 transformed test instances\n" in text
     assert all(len(line) <= 80 for line in text.split("\n"))
 
 
@@ -79,7 +80,8 @@ def test_rich_draws_the_result_as_a_panel(result: RubberRulerResult) -> None:
     selected = result.selected_feature_type.upper()
     assert "Rubber Ruler Test" in drawn
     assert f"use {selected}-based features" in drawn
-    assert "3 algorithms, 4 train, 4 test, 4 transformed test" in drawn
+    assert "3 algorithms, 4 training instances, 4 test instances," in drawn
+    assert "4 transformed test instances" in drawn
 
 
 def test_the_parts_give_the_same_r2(result: RubberRulerResult) -> None:
@@ -158,9 +160,8 @@ def test_warnings_are_collected_under_the_card() -> None:
     result = tiny_run(portfolio, predictor=RandomForestRegressor(n_estimators=10))
     lines = str(result).split("\n")
     warnings = lines[lines.index("Warnings:") + 1 :]
-    assert warnings[0].endswith(
-        "runs failed; their best value so far was used (+inf if none) (see the log)"
-    )
+    assert warnings[0].endswith("runs failed; their best value so far was used")
+    assert warnings[1] == "    (+inf if there was none; see the log)"
     assert warnings[-1] == (
         "  predictor has random_state=None, so R^2 may change between calls"
     )
@@ -179,7 +180,8 @@ def test_one_failed_run_is_written_in_the_singular() -> None:
     result = tiny_run({"flaky": fails_once, "random": algorithms.random_search})
     lines = str(result).split("\n")
     assert lines[lines.index("Warnings:") + 1 :] == [
-        "  1 run failed; its best value so far was used (+inf if none) (see the log)"
+        "  1 run failed; its best value so far was used",
+        "    (+inf if there was none; see the log)",
     ]
 
 

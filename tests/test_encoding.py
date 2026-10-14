@@ -81,7 +81,7 @@ def test_a_whole_run_prints_in_cp932(tmp_path: Path) -> None:
     stderr = completed.stderr.decode("cp932", errors="replace")
     assert completed.returncode == 0, stderr
     stdout = completed.stdout.decode("ascii")
-    assert "  R^2 on transformed test: " in stdout
+    assert "  R^2 on the transformed test instances: " in stdout
     assert (
         "  predictor has random_state=None, so R^2 may change between calls" in stdout
     )

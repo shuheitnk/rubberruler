@@ -1,7 +1,9 @@
 """The card that print(result) shows, and the panel that rich draws of it."""
 
 import math
-from collections.abc import Sequence
+import re
+import textwrap
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import TypedDict
 
@@ -16,7 +18,18 @@ from rubberruler._features import FeatureType
 
 WIDTH = 80
 SEPARATOR = ", "
-COLUMNS = ("feature type", "R^2 (test)", "R^2 (transformed test)", "degradation")
+# The header of the table, in two lines, so that the names of the instance sets
+# fit in 80 characters without abbreviation.
+HEADER = (
+    ("", "feature type"),
+    ("R^2 on", "test instances"),
+    ("R^2 on", "transformed test instances"),
+    ("", "degradation"),
+)
+COLUMN_WIDTHS = (12, 14, 26, 11)
+COLUMN_GAP = "   "
+# Joins the words of a part in parentheses while a warning is wrapped.
+NO_BREAK = "\x00"
 WEAK_DIFFERENCE = 0.01
 WEAK_R2 = 0.1
 WEAK_R2_NOTE = (
@@ -59,7 +72,8 @@ DEFAULT_CONFIG = RunConfig(
 
 
 def select(table: pd.DataFrame) -> FeatureType:
-    """tau*: the larger R^2 on the transformed test wins; rank wins ties."""
+    """tau*: the larger R^2 on the transformed test instances wins; rank wins
+    ties."""
     value = float(table.loc["value", "r2_transformed_test"])  # pyright: ignore[reportArgumentType]
     rank = float(table.loc["rank", "r2_transformed_test"])  # pyright: ignore[reportArgumentType]
     return "rank" if rank >= value else "value"
@@ -83,28 +97,47 @@ class Card:
 
     def text(self) -> str:
         """The card that print(result) shows."""
-        widths = (12, 10, 22, 11)
         lines = [
             f"Rubber Ruler Test: {self.answer()}",
             f"  {self.evidence}",
             "",
-            "   ".join(COLUMNS),
+            _table_line(names[0] for names in HEADER),
+            _table_line(names[1] for names in HEADER),
+            *(_table_line(row) for row in self.rows),
+            "",
+            *self.meaning,
+            *self.cautions,
+            "",
+            *self.conditions,
         ]
-        for row in self.rows:
-            cells = [row[0].ljust(widths[0])]
-            cells += [
-                cell.rjust(width)
-                for cell, width in zip(row[1:], widths[1:], strict=True)
-            ]
-            lines.append("   ".join(cells))
-        lines += ["", *self.meaning, *self.cautions, "", *self.conditions]
         if self.warnings:
-            lines += ["", "Warnings:", *(f"  {line}" for line in self.warnings)]
+            lines += ["", *self.warning_lines()]
         return "\n".join(lines)
+
+    def warning_lines(self) -> list[str]:
+        """ "Warnings:" and each warning, wrapped at 80 with the rest indented. A
+        part in parentheses stays on one line."""
+        lines = ["Warnings:"]
+        for warning in self.warnings:
+            wrapped = textwrap.wrap(
+                re.sub(r"\([^()]*\)", _keep_together, warning),
+                WIDTH,
+                initial_indent="  ",
+                subsequent_indent="    ",
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+            lines += [line.replace(NO_BREAK, " ") for line in wrapped]
+        return lines
 
     def panel(self) -> Panel:
         """The card as rich draws it, such as with rich.print(result)."""
-        table = Table(*COLUMNS, box=box.SIMPLE_HEAD, show_edge=False, pad_edge=False)
+        table = Table(
+            *("\n".join(names) if names[0] else names[1] for names in HEADER),
+            box=box.SIMPLE_HEAD,
+            show_edge=False,
+            pad_edge=False,
+        )
         for column in table.columns[1:]:
             column.justify = "right"
         for row in self.rows:
@@ -121,7 +154,7 @@ class Card:
             parts.append(Text("\n".join(self.cautions), style="yellow"))
         parts += [Text(""), Text("\n".join(self.conditions), style="dim")]
         if self.warnings:
-            lines = ["Warnings:", *(f"  {line}" for line in self.warnings)]
+            lines = self.warning_lines()
             parts += [Text(""), Text("\n".join(lines), style="yellow")]
         return Panel(
             Group(*parts), title="Rubber Ruler Test", title_align="left", expand=False
@@ -157,20 +190,27 @@ def card(
             f"The difference is {difference:.4f} (below 0.01), so treat this answer "
             "as weak."
         )
-    # chosen is the larger R^2 on the transformed test (or equal to the other).
+    # chosen is the larger R^2 on the transformed test instances (or equal to the
+    # other).
     if chosen < WEAK_R2:
         cautions += WEAK_R2_NOTE
     train, test, transformed_test = set_sizes
     return Card(
         selected=selected,
-        evidence=f"R^2 on transformed test: {selected} {number(chosen, digits)} "
-        f"{relation} {other} {number(rejected, digits)}",
+        evidence=f"R^2 on the transformed test instances: {selected} "
+        f"{number(chosen, digits)} {relation} {other} {number(rejected, digits)}",
         rows=tuple(rows),
         meaning=MEANING[selected],
         cautions=tuple(cautions),
         conditions=(
-            f"{n_algorithms} algorithms{SEPARATOR}{train} train{SEPARATOR}{test} test"
-            f"{SEPARATOR}{transformed_test} transformed test",
+            *wrap(
+                [
+                    f"{n_algorithms} algorithms",
+                    f"{train} training instances",
+                    f"{test} test instances",
+                    f"{transformed_test} transformed test instances",
+                ]
+            ),
             *wrap(settings(config)),
         ),
         warnings=tuple(warnings),
@@ -231,6 +271,20 @@ def wrap(items: Sequence[str]) -> list[str]:
             lines[-1] += SEPARATOR.rstrip()
             lines.append(item)
     return lines
+
+
+def _keep_together(match: re.Match[str]) -> str:
+    return match.group().replace(" ", NO_BREAK)
+
+
+def _table_line(cells: Iterable[str]) -> str:
+    """One line of the table: the feature type on the left, the numbers right."""
+    first, *rest = cells
+    aligned = [first.ljust(COLUMN_WIDTHS[0])]
+    aligned += [
+        cell.rjust(width) for cell, width in zip(rest, COLUMN_WIDTHS[1:], strict=True)
+    ]
+    return COLUMN_GAP.join(aligned).rstrip()
 
 
 def number(value: float, digits: int) -> str:

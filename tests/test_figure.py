@@ -52,10 +52,20 @@ def test_without_cache_dir_no_figure_is_written(
 
 
 def test_the_svg_keeps_the_values_names_and_colors_as_text(tmp_path: Path) -> None:
-    """The four values, the block names, and both colors are in the SVG."""
+    """The four values, the block names (each in two lines), and both colors are
+    in the SVG."""
     _, svg = save_figure(make_table((0.4119, 0.2318), (0.3018, 0.31)), tmp_path)
     text = svg.read_text("utf-8")
-    for label in ("0.41", "0.23", "0.30", "0.31", ">test<", ">transformed test<"):
+    labels = (
+        "0.41",
+        "0.23",
+        "0.30",
+        "0.31",
+        ">test<",
+        ">transformed test<",
+        ">instances<",
+    )
+    for label in labels:
         assert label in text
     assert "#d55e00" in text.lower()
     assert "#0072b2" in text.lower()

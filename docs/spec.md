@@ -85,20 +85,23 @@ The three algorithms and `simple_features` are defined in the quickstart of the 
 
 ```
 Rubber Ruler Test: use RANK-based features
-  R^2 on transformed test: rank 0.63 > value 0.42
+  R^2 on the transformed test instances: rank 0.63 > value 0.42
 
-feature type   R^2 (test)   R^2 (transformed test)   degradation
-value                0.71                     0.42          0.29
-rank                 0.66                     0.63          0.03
+                       R^2 on                       R^2 on
+feature type   test instances   transformed test instances   degradation
+value                    0.71                         0.42          0.29
+rank                     0.66                         0.63          0.03
 
 With value-based features, the predictor does not generalize to
 strictly increasing transformations of the objective.
 
-3 algorithms, 2400 train, 240 test, 240 transformed test
+3 algorithms, 2400 training instances, 240 test instances,
+240 transformed test instances
 seed=42
 ```
 
 - The order is answer, evidence, meaning, and conditions. Every line has at most 80 characters. The text of `print(result)` has no color.
+- The card uses the terms of Chapter 2 without abbreviation. Where a term does not fit in a line, the text is broken into lines instead: the header of the table has two lines (`R^2 on` above `test instances` and `transformed test instances`), and the conditions and the warnings wrap.
 - The characters are ASCII only. R² is written `R^2` (D35; the same holds for the plan line, the warnings, the error messages, and the docstrings of the public functions).
 - Numbers have two decimal places and are right-aligned. When the R² values of the two feature types on the transformed test instances are equal after rounding to two decimal places, all three columns of the table and the second line use three decimal places.
 - Comparisons always use the values before rounding. The number of displayed digits is never used for a comparison.
@@ -108,12 +111,12 @@ seed=42
   - For value: `Value-based features still help the predictor after` / `strictly increasing transformations of the objective.`
 - If the absolute difference δ of the two R² values on the transformed test instances (before rounding) is below 0.01, the line `The difference is {δ:.4f} (below 0.01), so treat this answer as weak.` follows the meaning.
 - If the larger R² on the transformed test instances (before rounding) is below 0.1, the two lines `Both R^2 values are below 0.1, so this answer is weak.` / `Check the extractor and the predictor first.` follow the meaning (after the line on the difference, if present). With either feature type, the predictor then explains almost none of the performance, so the answer is weak, and the extractor and the predictor should be revised first (D36).
-- The last two lines are the conditions. The first is the number of algorithms and the size of each instance set, joined by `, `. The second is `seed` and the settings that differ from their defaults, in the order of the table in 5.2, joined by `, `. A line longer than 80 characters is broken at a `, `, and a broken line keeps the `,` at its end (at most 80 characters including the `,`).
+- The last lines are the conditions. First the number of algorithms and the size of each instance set (`3 algorithms`, `2400 training instances`, `240 test instances`, `240 transformed test instances`), joined by `, `. Then `seed` and the settings that differ from their defaults, in the order of the table in 5.2, joined by `, `. A line longer than 80 characters is broken at a `, `, and a broken line keeps the `,` at its end (at most 80 characters including the `,`).
   - `seed` is always shown: `seed=42` for the default, and `seed=7 (default 42)` otherwise.
   - An integer setting: `dimension=20 (default 10)`.
   - A sequence of instance numbers is converted to a sorted tuple of integers before it is compared with the default. A contiguous sequence is shown as `train_instance_numbers=11-20 (default 11-110)`, a non-contiguous one as `train_instance_numbers=12 numbers (default 11-110)`, and a single number as `test_instance_numbers=5 (default 1-10)`.
   - `n_jobs` and `cache_dir` do not change the result and are not shown.
-- If there are warnings, their counts come last, together (5.6).
+- If there are warnings, their counts come last, together (5.6). A warning longer than 80 characters with its indent of two spaces is wrapped at a space, the rest indented by four spaces; a part in parentheses stays on one line.
 - `rich.print(result)` draws the same parts in a panel titled `Rubber Ruler Test` (the `__rich__` method of the result): the answer in bold green, the table with the row of the selected feature type in bold, the cautions (the lines on a weak answer) and the warnings in yellow, and the conditions dimmed. The text of `print(result)` does not change. The borders of the panel are decorations of rich, which may use non-ASCII characters only when the encoding of the output is UTF-8 (D35).
 
 ### 3.3 Decision Rule (R-DEC-1)
@@ -135,7 +138,7 @@ At the end, `run_test` writes the R² values of the card as a bar chart in PNG a
 Form of the figure:
 
 - The data are `r2_test` and `r2_transformed_test` of `result.table` (value and rank). The values before rounding are used; they are rounded to two decimal places only in the labels. A value of `nan` (all values of J on the test instances are equal) gets neither a bar nor a label.
-- The blocks are, from left to right, `test` and `transformed test`. Each block has the bars `value` and `rank`, from left to right. A bar is at `block * 3 + slot` (slot 0 or 1) with width 0.74.
+- The blocks are, from left to right, `test instances` and `transformed test instances`, each name in two lines (`test` / `instances` and `transformed test` / `instances`, so that it fits its block at 26 pt). Each block has the bars `value` and `rank`, from left to right. A bar is at `block * 3 + slot` (slot 0 or 1) with width 0.74.
 - Colors (Okabe-Ito): value `#D55E00`, rank `#0072B2`. The fill is the color moved 35% toward white (value `#E49659`, rank `#59A3CD`); the edge is the original color with line width 1.8.
 - The value is written at the end of each bar (above a positive bar, below a negative one): two decimal places, bold, in the original color of the bar, 24 pt. A negative number uses the minus sign U+2212, not a hyphen (a negative number that rounds to 0.00 is written `0.00`, as on the card). The gap between a bar and its value is 2% of the range of the y axis.
 - The value labels have a white background (`bbox={"facecolor": "white", "edgecolor": "none", "boxstyle": "square,pad=0.1"}`), so that the reference line at R² = 1 and the grid lines break behind a label. The labels are drawn above the lines.
@@ -406,7 +409,7 @@ The following is checked automatically before the heavy computation. `run_test` 
 
 | Condition | Line below the card |
 |---|---|
-| k runs failed | `{k} runs failed; their best value so far was used (+inf if none) (see the log)`; for k = 1, `1 run failed; its best value so far was used (+inf if none) (see the log)` |
+| k runs failed | `{k} runs failed; their best value so far was used (+inf if there was none; see the log)`; for k = 1, `1 run failed; its best value so far was used (+inf if there was none; see the log)` |
 | k instances have features with NaN (±inf counts as NaN; 4.2) | `{k} instances have NaN features`; for k = 1, `1 instance has NaN features` |
 | k instances have a constant y on the feature sample (value becomes a zero vector) | `{k} instances have a constant objective on the feature sample`; for k = 1, `1 instance has a constant objective on the feature sample` |
 | A function identified by its name only because its source is not available | `{name}: cached by name only (source not available)` |
@@ -418,7 +421,8 @@ Example below the card:
 
 ```
 Warnings:
-  2 runs failed; their best value so far was used (+inf if none) (see the log)
+  2 runs failed; their best value so far was used
+    (+inf if there was none; see the log)
   12 instances have NaN features
 ```
 

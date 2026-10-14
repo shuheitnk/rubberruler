@@ -18,7 +18,11 @@ if TYPE_CHECKING:
 
 FILE_NAME = "rubber_ruler_test"
 FEATURE_TYPES = ("value", "rank")
-BLOCKS = (("r2_test", "test"), ("r2_transformed_test", "transformed test"))
+# The names of the instance sets, in two lines so that they fit their blocks.
+BLOCKS = (
+    ("r2_test", "test\ninstances"),
+    ("r2_transformed_test", "transformed test\ninstances"),
+)
 EDGE = {"value": "#D55E00", "rank": "#0072B2"}  # Okabe-Ito
 FILL = {"value": "#E49659", "rank": "#59A3CD"}  # 35% toward white
 INK = "#1B1B1B"
@@ -48,7 +52,8 @@ def save_figure(table: pd.DataFrame, folder: Path) -> tuple[Path, Path]:
 
 
 def draw(table: pd.DataFrame) -> "Figure":
-    """The bar chart: blocks test, transformed test; bars value, rank."""
+    """The bar chart: blocks test instances, transformed test instances; bars
+    value, rank."""
     from matplotlib.figure import Figure
 
     values = {

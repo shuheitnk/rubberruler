@@ -164,7 +164,7 @@ class Problem:
         if points.ndim == 2 and points.shape[1] == self.dimension:
             return self._evaluate_many(points)
         raise error(
-            f"problem(x) got x of shape {points.shape} on {self._instance_id}, "
+            f"problem(x) received x of shape {points.shape} on {self._instance_id}, "
             f"whose dimension is {self.dimension}.",
             why="x must be one point of shape (d,) or n points of shape (n, d).",
             fix=f"pass x with shape ({self.dimension},) or (n, {self.dimension}).",

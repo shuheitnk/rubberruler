@@ -151,13 +151,13 @@ def transform(instance: ProblemInstance) -> ProblemInstance:
     """
     if not isinstance(instance, ProblemInstance):  # pyright: ignore[reportUnnecessaryIsInstance]
         raise error(
-            f"transform got {type(instance).__name__}.",
+            f"transform received {type(instance).__name__}.",
             why="transform needs a ProblemInstance from rr.bbob_instances().",
             fix="pass an element of split.test, such as split.test[0].",
         )
     if instance.is_transformed:
         raise error(
-            f"transform got {instance.instance_id}, which is already transformed.",
+            f"transform received {instance.instance_id}, which is already transformed.",
             why="each instance has one transformation; applying it twice is not "
             "defined.",
             fix=f"pass the original instance {instance.original_instance_id}.",
@@ -253,13 +253,13 @@ def instance_tuple(
         result = tuple(instances)
     except TypeError:
         raise error(
-            f"{function} got instances of type {type(instances).__name__}.",
+            f"{function} received instances of type {type(instances).__name__}.",
             why="instances must be an iterable of ProblemInstance.",
             fix=fix,
         ) from None
     if not result:
         raise error(
-            f"{function} got no instances.",
+            f"{function} received no instances.",
             why="there is nothing to compute.",
             fix=fix,
         )
@@ -267,14 +267,14 @@ def instance_tuple(
     for instance in result:
         if not isinstance(instance, ProblemInstance):  # pyright: ignore[reportUnnecessaryIsInstance]
             raise error(
-                f"{function} got {type(instance).__name__} in instances.",
+                f"{function} received {type(instance).__name__} in instances.",
                 why="instances must be ProblemInstance objects from "
                 "rr.bbob_instances().",
                 fix=fix,
             )
         if instance.instance_id in seen:
             raise error(
-                f"{function} got {instance.instance_id} twice in instances.",
+                f"{function} received {instance.instance_id} twice in instances.",
                 why="each instance gives one row of the result.",
                 fix="pass each instance once.",
             )

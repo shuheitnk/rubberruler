@@ -729,11 +729,12 @@ def failure_warning(count: int) -> str:
     """The warning line about failed runs (singular for one run)."""
     if count == 1:
         return (
-            "1 run failed; its best value so far was used (+inf if none) (see the log)"
+            "1 run failed; its best value so far was used "
+            "(+inf if there was none; see the log)"
         )
     return (
-        f"{count} runs failed; their best value so far was used (+inf if none) "
-        "(see the log)"
+        f"{count} runs failed; their best value so far was used "
+        "(+inf if there was none; see the log)"
     )
 
 
