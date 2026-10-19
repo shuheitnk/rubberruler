@@ -1,6 +1,6 @@
 # rubberruler Specification
 
-- Version: 1.1 (2026-10-14; version 1.0 of 2026-09-29, translated into English).
+- Version: 1.2 (2026-10-19; MA-BBOB and the upper bound of instance numbers added, D45 and D46; version 1.1 of 2026-10-14; version 1.0 of 2026-09-29, translated into English).
 - This document is the single source of truth for the specification. The code, the README, and the tests follow it. A change to the specification is made in this document first.
 - Each requirement has an ID (for example, `R-API-3`). The docstring of a test names the ID of the requirement that it checks.
 - The reasons are in `decisions.md`, the construction and its pitfalls in `implementation.md`, and the grounds of the user experience in `ux-design.md`.
@@ -23,7 +23,7 @@ The following are not built. They are not added during implementation unless the
 
 - Comparison of several extractors, diagnostics per feature, breakdowns by function class, output in paper formats (such as LaTeX), and figures (only the figure of the answer in 3.4 is built).
 - A selector for automated algorithm selection (a function that selects the algorithm with the largest predicted value).
-- The answer on problems other than BBOB (`transform_objective` transforms any objective function, but the answer is decided on BBOB), preprocessing other than value and rank, transformation families other than the spline family, and sampling other than uniform random sampling.
+- The answer on problem suites other than BBOB and MA-BBOB (`transform_objective` transforms any objective function, but the answer is decided on BBOB or MA-BBOB), a mixture of the two suites in one `run_test` (such as training on MA-BBOB and testing on BBOB; D45), preprocessing other than value and rank, transformation families other than the spline family, and sampling other than uniform random sampling.
 - A procedure that enlarges a training set as a whole (such as a function that multiplies instances). `transform_objective` transforms one objective function (D43).
 - Presets of settings (such as `scale`), setting objects, and arguments that switch behavior (`verbose`, `dry_run`, `multi_output`, `on_*`, `run_timeout`, and so on).
 - Precomputed data, demonstration functions, functions that inspect or delete the cache, and a function that runs only the pre-checks.
@@ -38,6 +38,7 @@ The code, the docstrings, the error messages, the card, and the README use only 
 
 | Symbol in the paper | Term | Name in the code |
 |---|---|---|
+| (none) | problem suite | `suite`: `"bbob"` (the 24 BBOB functions) or `"ma-bbob"` (MA-BBOB, the affine combinations of the BBOB functions in ioh) |
 | p | problem instance | `ProblemInstance` (an element of an instance set) |
 | (p as one run sees it) | problem | `Problem` (what an algorithm receives; the parameter is named `problem`) |
 | P_train / P_test / P̃_test | training / test / transformed test instances | `split.train` / `split.test` / `split.transformed_test` |
@@ -48,7 +49,7 @@ The code, the docstrings, the error messages, the card, and the README use only 
 | predictor_τ | performance predictor | `predictor` |
 | g_{ψ,p} | strictly increasing transformation | `transform` |
 | f (the user's objective function) | objective | `objective` (the parameter of `transform_objective`) |
-| g(f(x)) for the user's f | transformed objective | the return value of `transform_objective` (a function; distinct from a transformed test instance, which is a BBOB `ProblemInstance`) |
+| g(f(x)) for the user's f | transformed objective | the return value of `transform_objective` (a function; distinct from a transformed test instance, which is a `ProblemInstance` of BBOB or MA-BBOB) |
 | R²_τ(Q) | coefficient of determination | `r2_score(..., instances=Q)` |
 | R²_τ(P_test) − R²_τ(P̃_test) | degradation | `degradation` |
 | τ* | selected feature type | `selected_feature_type` |
@@ -113,9 +114,17 @@ seed=42
 - If the larger R² on the transformed test instances (before rounding) is below 0.1, the two lines `Both R^2 values are below 0.1, so this answer is weak.` / `Check the extractor and the predictor first.` follow the meaning (after the line on the difference, if present). With either feature type, the predictor then explains almost none of the performance, so the answer is weak, and the extractor and the predictor should be revised first (D36).
 - The last lines are the conditions. First the number of algorithms and the size of each instance set (`3 algorithms`, `2400 training instances`, `240 test instances`, `240 transformed test instances`), joined by `, `. Then `seed` and the settings that differ from their defaults, in the order of the table in 5.2, joined by `, `. A line longer than 80 characters is broken at a `, `, and a broken line keeps the `,` at its end (at most 80 characters including the `,`).
   - `seed` is always shown: `seed=42` for the default, and `seed=7 (default 42)` otherwise.
+  - The problem suite: `suite=ma-bbob (default bbob)`. On BBOB, nothing is shown, so the card of BBOB is the same as before MA-BBOB was added.
   - An integer setting: `dimension=20 (default 10)`.
-  - A sequence of instance numbers is converted to a sorted tuple of integers before it is compared with the default. A contiguous sequence is shown as `train_instance_numbers=11-20 (default 11-110)`, a non-contiguous one as `train_instance_numbers=12 numbers (default 11-110)`, and a single number as `test_instance_numbers=5 (default 1-10)`.
+  - A sequence of instance numbers is converted to a sorted tuple of integers before it is compared with the default of the suite (5.2). A contiguous sequence is shown as `train_instance_numbers=11-20 (default 11-110)`, a non-contiguous one as `train_instance_numbers=12 numbers (default 11-110)`, and a single number as `test_instance_numbers=5 (default 1-10)`. On MA-BBOB, for example, `train_instance_numbers=1-500 (default 1-2400)`; the default numbers of MA-BBOB are not shown.
   - `n_jobs` and `cache_dir` do not change the result and are not shown.
+  - The conditions of MA-BBOB with the defaults:
+
+    ```
+    3 algorithms, 2400 training instances, 240 test instances,
+    240 transformed test instances
+    seed=42, suite=ma-bbob (default bbob)
+    ```
 - If there are warnings, their counts come last, together (5.6). A warning longer than 80 characters with its indent of two spaces is wrapped at a space, the rest indented by four spaces; a part in parentheses stays on one line.
 - `rich.print(result)` draws the same parts in a panel titled `Rubber Ruler Test` (the `__rich__` method of the result): the answer in bold green, the table with the row of the selected feature type in bold, the cautions (the lines on a weak answer) and the warnings in yellow, and the conditions dimmed. The text of `print(result)` does not change. The borders of the panel are decorations of rich, which may use non-ASCII characters only when the encoding of the output is UTF-8 (D35).
 
@@ -170,7 +179,7 @@ An algorithm is a function that receives one `Problem`. It evaluates the objecti
 |---|---|---|
 | `problem(x)` | `float` for x of shape (d,); an `NDArray[float64]` of shape (n,) for x of shape (n, d) | The value of the objective function; on a transformed instance, the transformed value |
 | `problem.dimension` | `int` | d |
-| `problem.lower_bounds`, `problem.upper_bounds` | `NDArray[float64]` of shape (d,) | The search range (−5 and 5 on BBOB) |
+| `problem.lower_bounds`, `problem.upper_bounds` | `NDArray[float64]` of shape (d,) | The search range (−5 and 5 on BBOB and MA-BBOB) |
 | `problem.budget` | `int` | The maximum number of evaluations of this run |
 | `problem.seed` | `int` | The random seed of this run (from 0 to 2³²−1) |
 | `problem.evaluations` | `int` | The number of evaluations so far |
@@ -191,7 +200,7 @@ An algorithm is a function that receives one `Problem`. It evaluates the objecti
 
 `feature_extractor(X, y) -> dict[str, float]`
 
-- X is the sample, passed in the search range (on BBOB, [−5, 5]). y holds the objective values preprocessed for the feature type and lies in [0, 1] (6.4).
+- X is the sample, passed in the search range (on BBOB and MA-BBOB, [−5, 5]). y holds the objective values preprocessed for the feature type and lies in [0, 1] (6.4).
 - One extractor serves both feature types.
 - The keys of the dict are the same set on every instance. The order of the keys is that of the first instance computed. A value that cannot be computed is `float("nan")`.
 - A value may be anything that `float()` converts (`int`, `numpy.float64`, `numpy.int64`, and so on). Otherwise, it is an error.
@@ -228,15 +237,16 @@ An unfitted object with `fit(X, y)` and `predict(X)` (the scikit-learn form).
 
 ### 5.1 Public Names (R-API-1)
 
-`rubberruler.__all__` contains exactly these 10 names.
+`rubberruler.__all__` contains exactly these 11 names.
 
 ```
 run_test
-bbob_instances, transform, measure_performance, compute_features, fit_predictor, r2_score
+bbob_instances, ma_bbob_instances, transform, measure_performance, compute_features, fit_predictor, r2_score
 transform_objective
 Problem, RubberRulerError
 ```
 
+- `ma_bbob_instances` makes the instance sets of MA-BBOB, as `bbob_instances` does for BBOB (D45).
 - `transform_objective` is not used for the answer. It is a tool with which the user, after reading the answer of the card, augments their own training data (6.7; D43).
 - `ProblemInstance`, `InstanceSplit`, `FittedPredictor`, and `RubberRulerResult` appear only as return values and are not public (the user does not need to import them). Every module name starts with `_`.
 - Type aliases such as `Algorithm` and `FeatureExtractor` are not public either.
@@ -249,9 +259,10 @@ def run_test(
     feature_extractor: FeatureExtractor,
     predictor: object,
     *,
+    suite: Literal["bbob", "ma-bbob"] = "bbob",
     dimension: int = 10,
-    train_instance_numbers: Sequence[int] = range(11, 111),
-    test_instance_numbers: Sequence[int] = range(1, 11),
+    train_instance_numbers: Sequence[int] | None = None,
+    test_instance_numbers: Sequence[int] | None = None,
     budget_per_dimension: int = 1000,
     n_runs: int = 31,
     n_samples_per_dimension: int = 50,
@@ -264,9 +275,10 @@ def run_test(
 | Argument | Meaning | Accepted values (otherwise `RubberRulerError`) |
 |---|---|---|
 | `portfolio` | Algorithm names mapped to algorithms | At least 2; the names are non-empty `str` |
+| `suite` | The problem suite of all instances | `"bbob"` or `"ma-bbob"` |
 | `dimension` | d | An `int` of at least 2 |
-| `train_instance_numbers` | BBOB instance numbers of the training instances | `int` values of at least 1, without repetition, not empty |
-| `test_instance_numbers` | Instance numbers of the test instances | As above, and disjoint from the training ones |
+| `train_instance_numbers` | Instance numbers of the training instances; `None` takes the default of the suite: 11 to 110 on BBOB, 1 to 2400 on MA-BBOB | `None`, or `int` values from 1 to 2³¹−1 (2,147,483,647), without repetition, not empty |
+| `test_instance_numbers` | Instance numbers of the test instances; `None` takes the default of the suite: 1 to 10 on BBOB, 2401 to 2640 on MA-BBOB | As above, and disjoint from the training ones |
 | `budget_per_dimension` | The maximum number of evaluations of one run divided by d | At least 1 |
 | `n_runs` | Runs per pair of instance and algorithm | At least 1 |
 | `n_samples_per_dimension` | Sample points for the features divided by d | At least 1 (and n = d × this value is at least 2) |
@@ -274,8 +286,10 @@ def run_test(
 | `n_jobs` | The number of parallel workers; −1 uses every CPU | A nonzero `int` |
 | `cache_dir` | The folder that stores the results of runs; `None` caches nothing | A writable path |
 
-- All 24 BBOB functions are used. The number of instances is (training + test + transformed test) × 24.
-- The defaults are the experimental settings of the paper (dimension, instances, budget, number of runs, and number of sample points for the features). rubberruler is independent of the experimental code of the paper and does not aim to match its random values or its numbers (D24).
+- On BBOB, all 24 functions are used, and each instance number gives 24 instances, one per function: the number of instances is (training + test + transformed test) × 24. On MA-BBOB, each instance number gives one instance: the number of instances is training + test + transformed test. With the defaults, both suites have 2400 training, 240 test, and 240 transformed test instances.
+- All instances of one `run_test` come from one suite (1.3).
+- `None` is the only value of `train_instance_numbers` and `test_instance_numbers` that is not a sequence of instance numbers. It stands for the default of the suite, because the defaults of BBOB are not meaningful on MA-BBOB (D45).
+- The defaults are the experimental settings of the paper (dimension, instances, budget, number of runs, and number of sample points for the features). The default instance numbers of MA-BBOB give the same numbers of instances as the defaults of BBOB (D45). rubberruler is independent of the experimental code of the paper and does not aim to match its random values or its numbers (D24).
 - Order of processing: checks of the settings → pre-checks (5.5) → preparing instances → measuring performance → computing features → fitting predictors and scoring → result → writing the figure of the answer (3.4; when `cache_dir` is set).
 - Output on stderr (R-UX-3): the plan line, the four stages with their progress, and the line on the written figure (3.4). The progress is drawn with rich.
 
@@ -322,7 +336,7 @@ An immutable dataclass.
 | `split` | `InstanceSplit` | The instance sets used |
 | `performance` | `pandas.DataFrame` | Rows are `instance_id`, columns are algorithm names, values are J |
 | `features` | `dict[str, pandas.DataFrame]` | Keys are feature types; rows are `instance_id`, columns are feature names |
-| `config` | `RunConfig` (a `TypedDict`, not public) | The seven settings actually used (`dimension: int`, `train_instance_numbers: tuple[int, ...]`, `test_instance_numbers: tuple[int, ...]`, `budget_per_dimension: int`, `n_runs: int`, `n_samples_per_dimension: int`, `seed: int`). `rr.run_test(..., **result.config)` repeats the same settings, and pyright accepts it |
+| `config` | `RunConfig` (a `TypedDict`, not public) | The eight settings actually used (`suite: Literal["bbob", "ma-bbob"]`, `dimension: int`, `train_instance_numbers: tuple[int, ...]`, `test_instance_numbers: tuple[int, ...]`, `budget_per_dimension: int`, `n_runs: int`, `n_samples_per_dimension: int`, `seed: int`). The instance numbers are those used, also when `None` took the default of the suite. `rr.run_test(..., **result.config)` repeats the same settings, and pyright accepts it |
 
 - `str(result)` and `repr(result)` are the card (3.2). Jupyter shows the same text. `rich.print(result)` draws the panel of 3.2 (`__rich__`).
 - `split`, `performance`, and `features` can be passed to the component functions as they are.
@@ -336,6 +350,13 @@ def bbob_instances(
     *, dimension: int = 10,
     train_instance_numbers: Sequence[int] = range(11, 111),
     test_instance_numbers: Sequence[int] = range(1, 11),
+    seed: int = 42,
+) -> InstanceSplit
+
+def ma_bbob_instances(
+    *, dimension: int = 10,
+    train_instance_numbers: Sequence[int] = range(1, 2401),
+    test_instance_numbers: Sequence[int] = range(2401, 2641),
     seed: int = 42,
 ) -> InstanceSplit
 
@@ -371,10 +392,13 @@ def transform_objective(
 ```
 
 - `InstanceSplit` has `train`, `test`, and `transformed_test` (each a `tuple[ProblemInstance, ...]`). Iterating over it yields all instances of the three in order, so `measure_performance(portfolio, split)` is valid.
-- `ProblemInstance` is read-only and has `instance_id`, `function_id`, `instance_number`, `dimension`, `lower_bounds`, `upper_bounds`, `seed` (the master seed), `is_transformed`, and `original_instance_id`. It is not callable (only the `Problem` of an algorithm evaluates the objective function).
-- `instance_id` is `f"f{function_id:02d}_i{instance_number:03d}_d{dimension}"` (for example, `f05_i003_d10` and `f05_i1000_d2`). A transformed instance appends `~transformed` (for example, `f05_i003_d10~transformed`). `original_instance_id` is the id before the transformation (the instance's own id for an original instance).
-- `bbob_instances(seed=...)` stores the master seed in the `seed` of every `ProblemInstance`. The other components use the `seed` of the instance.
-- `transform` applies a transformation determined only by (master seed, function, instance number, dimension). The same instance always receives the same transformation. Transforming a transformed instance again is an error.
+- `ProblemInstance` is read-only and has `instance_id`, `suite`, `function_id`, `instance_number`, `dimension`, `lower_bounds`, `upper_bounds`, `seed` (the master seed), `is_transformed`, and `original_instance_id`. It is not callable (only the `Problem` of an algorithm evaluates the objective function).
+- `function_id` (`int | None`) is the BBOB function from 1 to 24 on BBOB and `None` on MA-BBOB, which has no function ID (an MA-BBOB instance combines several BBOB functions; D45).
+- On BBOB, `instance_id` is `f"f{function_id:02d}_i{instance_number:03d}_d{dimension}"` (for example, `f05_i003_d10` and `f05_i1000_d2`). On MA-BBOB, it is `f"mabbob_i{instance_number:03d}_d{dimension}"` (for example, `mabbob_i001_d2` and `mabbob_i2401_d10`). A transformed instance appends `~transformed` (for example, `f05_i003_d10~transformed`). `original_instance_id` is the id before the transformation (the instance's own id for an original instance).
+- Each set of `bbob_instances` has one instance per function and instance number, ordered by function and then by instance number. Each set of `ma_bbob_instances` has one instance per instance number, ordered by instance number. The arguments of both are checked as in the table of 5.2, except that the instance numbers do not accept `None` (the defaults of each function are already those of its suite).
+- `bbob_instances(seed=...)` and `ma_bbob_instances(seed=...)` store the master seed in the `seed` of every `ProblemInstance`. The other components use the `seed` of the instance.
+- `transform` applies a transformation determined only by (master seed, suite, function on BBOB, instance number, dimension). The same instance always receives the same transformation. Transforming a transformed instance again is an error.
+- The other component functions accept instances of either suite and do not check that the instances of one call come from one suite.
 - `compute_features` stores the feature type in `DataFrame.attrs["feature_type"]` of its return value. `fit_predictor` records it in the `FittedPredictor`, and `r2_score` raises an error if the feature type or the columns of the features differ from those at fitting.
 - `fit_predictor` fits one predictor per algorithm (4.3). It uses only the rows of `instances`.
 - `transform_objective` calls neither `run_test` nor the other components. It receives the user's objective function, not a BBOB instance, and returns the transformed objective, a function that returns g(objective(x)) (6.7). `seed` is a required argument without a default (with a default, `[rr.transform_objective(f, lb, ub) for _ in range(10)]` would return the same transformation 10 times).
@@ -386,7 +410,7 @@ The following is checked automatically before the heavy computation. `run_test` 
 | Object | Checked |
 |---|---|
 | Each algorithm | On the first of the given instances (the first training instance in `run_test`), a run with budget 10·d and seed 0 ends within 60 seconds, evaluates at least once, and raises no exception. If `n_jobs` is not 1, the algorithm can be sent to another process (cloudpickle can serialize it) |
-| Feature extractor | On the first given instance of each function (in `run_test`, the first training instance of each of the 24 functions), it can be called for both value and rank, returns a `Mapping` with `str` keys and values that `float()` converts, and returns the same keys every time (D40) |
+| Feature extractor | On the first given instance of each BBOB function and on the first 24 given MA-BBOB instances (in `run_test`, the first training instance of each of the 24 functions on BBOB, and the first 24 training instances on MA-BBOB, or all of them if there are fewer; D45), it can be called for both value and rank, returns a `Mapping` with `str` keys and values that `float()` converts, and returns the same keys every time (D40) |
 | Predictor | It has `fit` and `predict` and is not the class itself. `fit` and `predict` work on small dummy data (10 × 3) and return values that convert to shape (10,) |
 
 - The time limit of 60 seconds applies on every OS and from every thread. The run of the pre-check runs in another thread of this process, and the calling thread waits and checks the time every 0.1 seconds (so Ctrl-C also arrives at once). Nothing is sent to another process, so the limit applies with `n_jobs=1` and to algorithms that cloudpickle cannot serialize. After 60 seconds, the `problem` of that run raises an exception on every further evaluation, an exception is also sent to the thread of the run, and a `RubberRulerError` is raised without waiting for the run to stop (D37). The thread of the run is a daemon, so a script ends right after the error. The exception sent to the thread does not reach a call inside C, such as `time.sleep`, so in a process that continues, such as Jupyter, the thread keeps running in the background until the C call returns.
@@ -446,14 +470,16 @@ Warnings:
   - Integers in keys are converted to Python `int` before they are passed (convert NumPy integers with `int()`; `json.dumps` cannot handle them).
   - Python's `hash()` is not used (its value changes from process to process).
 
+- The instance keys identify an instance within its suite: `"bbob"`, function_id, instance_number, dimension on BBOB, and `"ma-bbob"`, instance_number, dimension on MA-BBOB (D45). The keys of BBOB are the same as before MA-BBOB was added, so the random numbers of BBOB do not change.
+
 | Use | domain | keys | How the random numbers are drawn |
 |---|---|---|---|
-| ψ of the strictly increasing transformation | `"transform"` | `"bbob"`, function_id, instance_number, dimension | 6.3 |
-| Uniform sample for f̂_max | `"fmax"` | `"bbob"`, function_id, instance_number, dimension | `rng.uniform(lower_bounds, upper_bounds, size=(10_000, d))` |
-| Sample X for the features | `"features"` | `"bbob"`, function_id, instance_number, dimension | `rng.uniform(lower_bounds, upper_bounds, size=(n, d))` |
+| ψ of the strictly increasing transformation | `"transform"` | instance keys | 6.3 |
+| Uniform sample for f̂_max | `"fmax"` | instance keys | `rng.uniform(lower_bounds, upper_bounds, size=(10_000, d))` |
+| Sample X for the features | `"features"` | instance keys | `rng.uniform(lower_bounds, upper_bounds, size=(n, d))` |
 | ψ of `transform_objective` | `"transform"` | `"objective"` | 6.7 |
 | Uniform sample of `transform_objective` | `"fmax"` | `"objective"` | `rng.uniform(lower_bounds, upper_bounds, size=(n_samples, d))` |
-| Run of an algorithm | `"run"` | `"bbob"`, function_id, instance_number, dimension, algorithm name (`str`), run number | The value of `derive_seed` becomes `problem.seed` as it is |
+| Run of an algorithm | `"run"` | instance keys, algorithm name (`str`), run number | The value of `derive_seed` becomes `problem.seed` as it is |
 
 - `rng = numpy.random.default_rng(derive_seed(domain, seed, *keys))`.
 - Test values (fixed in `tests/`):
@@ -466,6 +492,10 @@ Warnings:
 | `derive_seed("run", 42, "bbob", 1, 1, 10, "cma-es", 0)` | `374886278` |
 | `derive_seed("transform", 42, "objective")` | `1546156558` |
 | `derive_seed("fmax", 42, "objective")` | `3206986475` |
+| `derive_seed("transform", 42, "ma-bbob", 1, 10)` | `972812586` |
+| `derive_seed("fmax", 42, "ma-bbob", 1, 10)` | `1130706760` |
+| `derive_seed("features", 42, "ma-bbob", 1, 10)` | `4219328329` |
+| `derive_seed("run", 42, "ma-bbob", 1, 10, "cma-es", 0)` | `113223792` |
 
 - The seed of a run of an algorithm is determined by the original instance and does not change with the transformation.
 - Right before each run, `random.seed` and `numpy.random.seed` (and `torch.manual_seed` if torch has been imported) are called with the seed of the run (so that a user's algorithm that uses the global random generators is reproducible too).
@@ -473,13 +503,16 @@ Warnings:
 ### 6.2 Instances (R-INS-1)
 
 - BBOB comes from `ioh`: `ioh.get_problem(function_id, instance_number, dimension, ioh.ProblemClass.BBOB)`.
-- f_min is `problem.optimum.y`. f̂_max is the maximum over 10⁴ points drawn uniformly from the search range (with the `"fmax"` seed).
+- MA-BBOB comes from `ioh` too (R-INS-2): `ioh.problem.ManyAffine(instance=instance_number, n_variables=dimension)`. ioh registers MA-BBOB under no `ProblemClass`, so `ioh.get_problem` cannot create it. The instance number alone determines the instance: ioh derives from it the weights of the 24 BBOB functions, the location x_opt of the optimum, and the instance number of each component function (the same number). The weights do not depend on the dimension.
+- The search range is the bounds of the ioh problem, [−5, 5]^d on both suites.
+- f_min is `problem.optimum.y` on both suites. On BBOB, it is the optimal value of the instance. On MA-BBOB, it is the value at x_opt, a positive number of about 10⁻¹² to 10⁻¹⁰, not 0: before taking the logarithm, ioh clamps the difference of each component function from its optimal value to at least 10⁻¹², so no point has a smaller value, and `optimum.y` is the exact minimum of the function as ioh implements it (D45). f̂_max is the maximum over 10⁴ points drawn uniformly from the search range (with the `"fmax"` seed).
+- Instance numbers lie from 1 to 2³¹−1 on both suites, because ioh receives the instance number as a C `int` (R-INS-3; D46). A larger number stops with a `RubberRulerError` in the check of the settings (5.2), not with the TypeError of ioh.
 
 ### 6.3 Strictly Increasing Transformation (R-TRF-1)
 
-The transformation is built by the following steps, with random numbers drawn in this order. There is one transformation per instance, determined only by (master seed, function, instance number, dimension).
+The transformation is built by the following steps, with random numbers drawn in this order. There is one transformation per instance, determined only by (master seed, suite, function on BBOB, instance number, dimension).
 
-1. `rng = numpy.random.default_rng(derive_seed("transform", seed, "bbob", fid, iid, d))`
+1. `rng = numpy.random.default_rng(derive_seed("transform", seed, *instance_keys))`, with the instance keys of 6.1 (on BBOB, `"bbob", fid, iid, d`; on MA-BBOB, `"ma-bbob", iid, d`)
 2. `m = rng.integers(5, 9)` (5 to 8)
 3. Knot positions `t = numpy.linspace(0, 1, m)` and heights `s_j = rng.normal(0.0, 1.0, m)`
 4. `s = scipy.interpolate.CubicSpline(t, s_j)` (not-a-knot)
@@ -496,6 +529,15 @@ Test values (seed=42, function 1, instance number 1, dimension 10; computed with
 | m | `5` | exact |
 | ψ(0.25), ψ(0.5), ψ(0.75) | `0.14828703445665872`, `0.21005289625892246`, `0.35689515337847727` | absolute 1e-9 |
 | f_min, f̂_max | `79.48`, `332.54400819810616` | absolute 1e-6 |
+
+Test values of MA-BBOB (seed=42, instance number 1, dimension 10; computed with NumPy 2.5, SciPy 1.18, and ioh 0.3.22, and identical with NumPy 1.24, SciPy 1.10, and ioh 0.3.17 on 2026-10-19):
+
+| Quantity | Value | Tolerance |
+|---|---|---|
+| m | `7` | exact |
+| ψ(0.25), ψ(0.5), ψ(0.75) | `0.416098557361484`, `0.5346717129994829`, `0.7681696027474796` | absolute 1e-9 |
+| f_min | `1.837515859581564e-12` | relative 1e-9 |
+| f̂_max | `38.945837019309465` | absolute 1e-6 |
 
 The properties ψ(0) = 0 and ψ(1) = 1 are checked with an absolute tolerance of 1e-12, because PCHIP evaluated at the last knot can return a value 1 ulp below 1 by rounding (the steps do not change).
 
@@ -529,7 +571,7 @@ The properties ψ(0) = 0 and ψ(1) = 1 are checked with an absolute tolerance of
 
 ### 6.7 Strictly Increasing Transformation of Any Objective Function (R-AUG-1)
 
-`rr.transform_objective(objective, lower_bounds, upper_bounds, *, seed, n_samples=10_000)` returns the transformed objective h(x) = g(objective(x)). g follows the formula of the paper and is built by the following steps. The key `"objective"` does not overlap with the keys of BBOB (which start with `"bbob"`).
+`rr.transform_objective(objective, lower_bounds, upper_bounds, *, seed, n_samples=10_000)` returns the transformed objective h(x) = g(objective(x)). g follows the formula of the paper and is built by the following steps. The key `"objective"` does not overlap with the instance keys of 6.1 (which start with `"bbob"` or `"ma-bbob"`).
 
 1. `lower_bounds` and `upper_bounds` are converted to float64 arrays. Both are one-dimensional with at least one element, have the same shape, are finite, and satisfy lower < upper in every dimension. d is their length.
 2. `rng = numpy.random.default_rng(derive_seed("fmax", seed, "objective"))` and `X = rng.uniform(lower_bounds, upper_bounds, size=(n_samples, d))`. `objective` is called on each row of X, one point at a time, and each value is converted with `float()`.
@@ -538,7 +580,7 @@ The properties ψ(0) = 0 and ψ(1) = 1 are checked with an absolute tolerance of
 5. g(y): `z = (y − f̂_min) / (f̂_max − f̂_min)`. ψ(z) if 0 < z < 1, and z otherwise (z ≤ 0 or z ≥ 1; the identity). NaN stays NaN, +inf stays +inf, and −inf stays −inf. Since ψ(0) = 0 and ψ(1) = 1, g is continuous at z = 0 and z = 1 and strictly increasing on the whole real line.
 6. h(x): the value of `objective(x)` is converted to a float64 array, g is applied elementwise, and the result is returned as a `float` if it has zero dimensions and as an array otherwise. If `objective` takes (n, d) and returns (n,), h also takes (n, d). h is an instance of a private class and can be pickled if `objective` can.
 
-The values are returned on the scale rescaled to [0, 1] by f̂_min and f̂_max (not on the original scale). Values better than the sample (near the optimum) fall on the side of the identity and are not stretched. The features are computed from uniform samples, so for augmentation, most values fall on the stretched side. Step 7 of 6.3 clips z < 0 to 0, but on BBOB f_min is the true minimum and z < 0 occurs only by rounding, so `transform` does not change (D43).
+The values are returned on the scale rescaled to [0, 1] by f̂_min and f̂_max (not on the original scale). Values better than the sample (near the optimum) fall on the side of the identity and are not stretched. The features are computed from uniform samples, so for augmentation, most values fall on the stretched side. Step 7 of 6.3 clips z < 0 to 0, but on BBOB and MA-BBOB f_min is the true minimum (6.2) and z < 0 occurs only by rounding, so `transform` does not change (D43).
 
 Errors (the three-line `RubberRulerError` of 5.6): `lower_bounds` and `upper_bounds` have different shapes, are not one-dimensional (including empty), cannot be converted to arrays of numbers, are not finite, or have a dimension with lower ≥ upper; `seed` is outside 0 to 2³²−1; `n_samples` is below 2; `objective` raised an exception on the sample (the original exception is chained); there are fewer than two distinct finite values.
 
@@ -570,10 +612,12 @@ Test values (the sphere function `numpy.sum(x**2, axis=-1)`, d = 2, bounds [−5
 - An algorithm is identified by an identifier made from its key in the portfolio, its source, its default values, its closure values, and the global values it refers to (recursively for the user's functions, by version for libraries). The procedure is in `implementation.md` 3.5. A function that cannot be fully identified triggers the warning of 5.6.
 - To delete the cache, the user deletes the folder (there is no function for it).
 - Features are not cached (they are cheap compared with the runs).
+- The `instance_id` of an MA-BBOB instance differs from every `instance_id` of BBOB (5.4), so the runs of the two suites can share one `cache_dir` without mixing. Adding MA-BBOB changes no run of BBOB, so the version of the cache format stays the same, and the cached runs of BBOB are still used.
 
 ### 7.3 Compatibility
 
 - Python 3.11 or later, without an upper bound (D34). Dependencies and lower bounds: numpy 1.24, scipy 1.10, pandas 2.0, pyarrow 25.0, ioh 0.3.17, joblib 1.6, cloudpickle 3.0 (imported directly by the pre-check), threadpoolctl 3.7, rich 13.7 (the progress on stderr and the panel of the card), matplotlib 3.10 (imported only to write the figure of the answer; 3.4), and psutil 7.2 (not imported by rubberruler; joblib uses it to stop the workers on Ctrl-C; D39). A lower bound is the older version of the two tested environments (Python 3.12 of uv.lock and Python 3.11 of the pflacco environment), and there are no upper bounds. scikit-learn is not a dependency (the user brings it with the predictor). In the pflacco environment (NumPy 1.24), pyarrow is kept below 26: pyproject has no upper bound, and the pflacco job of CI and the install commands for pflacco in `examples/` state `"pyarrow<26"` (D44).
+- MA-BBOB (`ioh.problem.ManyAffine`) exists from the lower bound ioh 0.3.17. Its values were identical with ioh 0.3.17, 0.3.18, and 0.3.22 (on Linux, 2026-10-19), so the lower bound of ioh stays the same.
 - The wheels of ioh 0.3.22 cover only CPython 3.9 to 3.12 on Linux x86_64, macOS, and Windows (checked on PyPI on 2026-09-29). On 3.13 and later and on Linux aarch64, pip builds ioh from the sdist, which needs a C++ compiler and CMake. CI runs on Python 3.12 and 3.14 with uv.lock (3.14 builds ioh from source) and on Python 3.11 in the pflacco environment.
 - A change of a default, of the generation of the transformation, of the derivation of random numbers, or of the computation of J and R² (including the unification of values in 6.6) can change the answer. It is treated as a change of the major version (of the minor version while the version is 0.x), and its entry in CHANGELOG.md starts with **Can change the answer**. A change that alters the values of runs also raises the version of the cache format (`implementation.md` 3.5), so that old runs are not used. The Versioning section of the README states this policy and asks the user to keep the version (`importlib.metadata.version("rubberruler")`) with the results.
 
@@ -601,15 +645,15 @@ Correspondence with Diátaxis: the tutorial is the Quickstart, the how-to guides
 
 The opening and the sections, in order, as of 0.1.0.
 
-1. **Opening**: the title, the badges (PyPI, Python versions, CI, license), one paragraph on what rubberruler does (given an algorithm portfolio, a feature extractor, and a performance predictor, it tells whether to compute the features value-based or rank-based), one paragraph on why (comparison-based algorithms such as CMA-ES and DE are invariant to strictly increasing transformations of the objective, but features computed from the objective values are not, so a predictor can fail although the best algorithm stays the same; rubberruler transforms BBOB test instances with random strictly increasing functions, the rubber rulers, and keeps the feature type whose predictions still hold), and the flow figure (`assets/flow-light.png` and `assets/flow-dark.png`; `implementation.md` 3.10).
+1. **Opening**: the title, the badges (PyPI, Python versions, CI, license), one paragraph on what rubberruler does (given an algorithm portfolio, a feature extractor, and a performance predictor, it tells whether to compute the features value-based or rank-based), one paragraph on why (comparison-based algorithms such as CMA-ES and DE are invariant to strictly increasing transformations of the objective, but features computed from the objective values are not, so a predictor can fail although the best algorithm stays the same; rubberruler transforms BBOB (or MA-BBOB) test instances with random strictly increasing functions, the rubber rulers, and keeps the feature type whose predictions still hold), and the flow figure (`assets/flow-light.png` and `assets/flow-dark.png`; `implementation.md` 3.10).
 2. **Installation**: `pip install rubberruler` and Python 3.11 or later. ioh decides how the installation goes: wheels for 3.11 and 3.12 on Linux (x86_64), macOS, and Windows; on 3.13 and later, pip builds ioh from source, which needs a C++ compiler and CMake and takes about five minutes (without a compiler, install Python 3.12 alongside; on Windows, `py -3.12`); Linux aarch64 (including Docker on Apple Silicon Macs) builds from source on every version, so a compiler comes first; Windows needs the Visual C++ Redistributable (X64), and without it, `import rubberruler` stops and says so (5.6). A link to Examples for the other packages.
 3. **Quickstart** (tutorial): `pip install rubberruler scikit-learn`. A link to `examples/quickstart.py` and its code (a test checks that the code is the same as in the README). Numbered comments separate the three components (1. the portfolio; 2. the extractor, with the statement that y is rescaled or ranked; 3. the predictor); `portfolio` and `predictor` are variables, and the three are passed to `run_test` as positional arguments. The comment on the small settings (`dimension=2`, `budget_per_dimension=100`, `n_runs=5`) states the time of the default settings (about an hour on a 16-core PC). The time of the run (about half a minute on 24 CPUs and about five minutes on 2) and that the progress is shown on stderr. The card (3.2; run with the small settings, and a test checks that it is the same to the character). How to read the card (the first line is the answer; the second line is the evidence, where the transformed test instances are explained; the table shows R² for each feature type, where the feature type and the degradation, the difference of the values before rounding, are explained; the last lines give the numbers of algorithms and instances, and the settings). One line on `rich.print(result)` (3.2). The figure of the answer (3.4; `assets/rubber_ruler_test.png`).
 4. **Usage**:
    - **Inputs** (how-to): the table of the three types of Chapter 4, and one item each for algorithms, extractors, and predictors (the two forms of `problem(x)` and its attributes; when the budget is spent, the next call ends the run with an exception that `except Exception` does not catch; algorithms written for IOHexperimenter work without changes; X in the search range, y in [0, 1], the same keys, NaN for values that cannot be computed; scikit-learn regressors and `Pipeline`, any object with `fit` and `predict`, copies are fitted (X holds the features of the training instances, y the performance of the algorithm); the user sets the predictor's seed).
-   - **Settings** (reference): the table of the arguments of 5.2 (argument, default, meaning). The accepted values are not in the table but in the docstring of `run_test` (`help(rr.run_test)`).
-   - **API** (reference): the table of the 10 names of 5.1, and a link to the example in `examples/README.md` that scores another predictor on the same data.
+   - **Settings** (reference): the table of the arguments of 5.2 (argument, default, meaning), including `suite` and the defaults of the instance numbers for each suite. The accepted values are not in the table but in the docstring of `run_test` (`help(rr.run_test)`).
+   - **API** (reference): the table of the 11 names of 5.1, and a link to the example in `examples/README.md` that scores another predictor on the same data.
    - **Notes**: pre-checks (5.5: short runs with a small budget, the predictor on dummy data, the extractor on each function, the 60-second limit, the three-line error); caching and resuming (7.2); memory and `n_jobs`; progress (rich in a terminal or a notebook, plain lines at most every 30 seconds in a file, `RUBBERRULER_NO_PROGRESS=1`); Docker on Windows and macOS (keep `cache_dir` inside the container or in a named volume); augmentation (`rr.transform_objective`, with a link to `examples/README.md`); reproducibility (7.1).
-5. **How it works** (explanation): the four stages of the progress, with the numbers of the default settings: preparing instances (training 11 to 110, test 1 to 10, the transformation g and ψ; above the estimated maximum, g only rescales, so g is strictly increasing everywhere), measuring performance (31 runs, budget 1000·d, J; a tie counts as half), computing features (50·d uniform random points, the value and rank preprocessing), and fitting predictors and scoring (one predictor per algorithm; R² over all pairs of instance and algorithm). The decision rule (3.3), its reason (J of comparison-based algorithms and rank-based features do not change, value-based features do), why the degradation does not decide, and the two cases of a weak answer (3.2). The figure of ψ (25 curves of ψ from 6.3, `assets/transformations-light.png` and `assets/transformations-dark.png`; the figure of the paper is not used; D24).
+5. **How it works** (explanation): the four stages of the progress, with the numbers of the default settings: preparing instances (training 11 to 110, test 1 to 10, the transformation g and ψ; above the estimated maximum, g only rescales, so g is strictly increasing everywhere), measuring performance (31 runs, budget 1000·d, J; a tie counts as half), computing features (50·d uniform random points, the value and rank preprocessing), and fitting predictors and scoring (one predictor per algorithm; R² over all pairs of instance and algorithm). The decision rule (3.3), its reason (J of comparison-based algorithms and rank-based features do not change, value-based features do), why the degradation does not decide, and the two cases of a weak answer (3.2). One paragraph on MA-BBOB (`suite="ma-bbob"`: one instance per instance number, the defaults 1 to 2400 for training and 2401 to 2640 for test, and the time of the default settings, measured before the release). The figure of ψ (25 curves of ψ from 6.3, `assets/transformations-light.png` and `assets/transformations-dark.png`; the figure of the paper is not used; D24).
 6. **Examples**: a link to `examples/` and `examples/README.md`, and the table of tools (ModularCMAES, ModDE, pymoo, pycma and Nevergrad, pflacco, DeepELA, PyTorch), each row linking to its section in `examples/README.md`.
 7. **Versioning**: the policy of 7.3 (a change that can change the answer comes with a new major version and is marked in CHANGELOG.md) and keeping the version with the results.
 8. **Citation**: a link to `CITATION.cff` ("Cite this repository" on GitHub). The paper is added once it is published (`implementation.md` 6.3).

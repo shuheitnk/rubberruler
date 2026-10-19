@@ -242,7 +242,7 @@ The documentation is divided into the four kinds of Diátaxis, so that you can e
 |---|---|---|
 | Tutorial | The first success | Quickstart of the README: run `examples/quickstart.py` with small settings and read the card |
 | How-to | Connecting what you have | Usage › Inputs of the README (the three types) and `examples/README.md` (installation and code for ModularCMAES, ModDE, pymoo, pycma, Nevergrad, pflacco, DeepELA, and PyTorch; connecting a function of another form with a one-line lambda; filling NaN with a `Pipeline`; another predictor on the same data; augmenting training data). Resuming after an interruption is in Usage › Notes of the README |
-| Reference | The exact specification | The docstrings (each starting with the symbol of the paper, with the accepted values) and the tables of Usage › Settings and Usage › API of the README (the 10 names and the arguments) |
+| Reference | The exact specification | The docstrings (each starting with the symbol of the paper, with the accepted values) and the tables of Usage › Settings and Usage › API of the README (the 11 names and the arguments) |
 | Explanation | Why it works this way | How it works of the README: the four stages, why the measurement uses strictly increasing transformations, why the degradation does not decide, and the figure of the rubber rulers |
 
 - The order of the sections of the README and its writing rules follow Chapter 8 of `spec.md` (opening → Installation → Quickstart → Usage → How it works → Examples → Versioning → Citation → Development → License). The main path (installing, the quickstart, and how to read the card) comes first, notes for only some environments go to Installation, and details per tool go to `examples/README.md`.
@@ -254,7 +254,7 @@ The documentation is divided into the four kinds of Diátaxis, so that you can e
 
 Every change that can change the answer is treated as a breaking change, because the feature type you chose must not change silently merely because the library was updated.
 
-- The public API is only the 10 names in `rubberruler.__all__`. Everything else is in modules whose names start with `_`.
+- The public API is only the 11 names in `rubberruler.__all__`. Everything else is in modules whose names start with `_`.
 - The project follows SemVer. While the version is 0.x, a breaking change is allowed in a minor release, stated at the top of the release notes. From 1.0, only in a major release.
 - The defaults are fixed to the settings of the paper. A change of a default, of the generation of the transformation, or of the derivation of random numbers is treated as major.
 - When a name changes, the old name stays for two minor releases and points to the new name with a `DeprecationWarning`.
@@ -304,7 +304,7 @@ Recorded: success, time taken, number of lookups in the documentation, and misun
 - [ ] Every error message contains what, why, and how to fix
 - [ ] `result.table` is the same for `n_jobs=1` and `n_jobs=8`
 - [ ] The card fits in a width of 80 characters and reads without color
-- [ ] There are exactly 10 public names, all of them in the glossary (Chapter 2 of `spec.md`)
+- [ ] There are exactly 11 public names, all of them in the glossary (Chapter 2 of `spec.md`)
 - [ ] A majority of the participants complete the five tasks of the user test without help
 
 ### 10.4 Decided: When the Difference of R² Is Small

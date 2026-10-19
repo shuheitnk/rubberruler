@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-rubberruler is a Python library that decides on BBOB, for the user's algorithm portfolio, feature extractor, and performance predictor, whether the features should be computed value-based or rank-based. The user only matches three input and output types and receives R² after strictly increasing transformations, together with the answer.
+rubberruler is a Python library that decides on BBOB or MA-BBOB, for the user's algorithm portfolio, feature extractor, and performance predictor, whether the features should be computed value-based or rank-based. The user only matches three input and output types and receives R² after strictly increasing transformations, together with the answer.
 
 ## Read First
 
@@ -11,7 +11,7 @@ rubberruler is a Python library that decides on BBOB, for the user's algorithm p
 
 ## Rules
 
-- **Build nothing that is not in the specification.** The public names are exactly the 10 names of spec 5.1. If an argument, attribute, convenience function, or option seems worth adding, do not add it; ask Shuhei. In particular, add nothing from "Out of Scope" in spec 1.3.
+- **Build nothing that is not in the specification.** The public names are exactly the 11 names of spec 5.1. If an argument, attribute, convenience function, or option seems worth adding, do not add it; ask Shuhei. In particular, add nothing from "Out of Scope" in spec 1.3.
 - **Each input has one type.** As in the table of spec Chapter 4. No branches that accept other forms.
 - **The vocabulary is the table of spec Chapter 2.** Use only its English terms, and do not call the same thing by different words. No abbreviations (`dimension`, not `dim`). No public function that starts with `test` and no public class that starts with `Test`.
 - **Write everything in the repository in academic English** (documents, comments, docstrings, commit messages, and the CHANGELOG), in the style of the paper: no contractions or colloquial expressions, and American spelling (spec Chapter 9).
