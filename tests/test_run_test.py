@@ -51,6 +51,7 @@ def test_run_test_gives_the_answer_and_what_it_rests_on(
     assert result.features["rank"].attrs["feature_type"] == "rank"
     assert list(result.features["value"].index) == list(result.performance.index)
     assert result.config == {
+        "suite": "bbob",
         "dimension": 2,
         "train_instance_numbers": (11, 12),
         "test_instance_numbers": (1, 2),

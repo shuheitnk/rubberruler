@@ -1,16 +1,16 @@
-"""BBOB problem instances and their transformed versions."""
+"""BBOB and MA-BBOB problem instances and their transformed versions."""
 
 import functools
 import itertools
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
 from rubberruler._errors import check_int, error, three_lines
-from rubberruler._seeding import generator
+from rubberruler._seeding import generator, instance_keys
 from rubberruler._transformations import StrictlyIncreasingTransformation, sample_psi
 
 try:
@@ -32,24 +32,37 @@ except ImportError as exception:
         )
     ) from exception
 
+Suite = Literal["bbob", "ma-bbob"]
+
 FUNCTION_IDS = tuple(range(1, 25))
+# The default training and test instance numbers of each suite.
+DEFAULT_INSTANCE_NUMBERS: dict[Suite, tuple[range, range]] = {
+    "bbob": (range(11, 111), range(1, 11)),
+    "ma-bbob": (range(1, 2401), range(2401, 2641)),
+}
 FMAX_SAMPLES = 10_000
 TRANSFORMED_SUFFIX = "~transformed"
 MAX_SEED = 2**32 - 1
+# ioh receives the instance number as a C int.
+MAX_INSTANCE_NUMBER = 2**31 - 1
 
 
 @dataclass(frozen=True)
 class ProblemInstance:
-    """One BBOB problem instance p, or its transformed version.
+    """One BBOB or MA-BBOB problem instance p, or its transformed version.
 
     Read-only and not callable: only the Problem that an algorithm receives can
     evaluate the objective.
 
     Attributes:
-        instance_id: ``f"f{function_id:02d}_i{instance_number:03d}_d{dimension}"``,
-            followed by ``~transformed`` on a transformed instance.
-        function_id: The BBOB function, from 1 to 24.
-        instance_number: The BBOB instance number.
+        instance_id: ``f"f{function_id:02d}_i{instance_number:03d}_d{dimension}"``
+            on BBOB and ``f"mabbob_i{instance_number:03d}_d{dimension}"`` on
+            MA-BBOB, followed by ``~transformed`` on a transformed instance.
+        suite: The problem suite, "bbob" or "ma-bbob".
+        function_id: The BBOB function, from 1 to 24, or None on MA-BBOB, which
+            has no function ID (an MA-BBOB instance combines several BBOB
+            functions).
+        instance_number: The instance number in the suite.
         dimension: d.
         lower_bounds: The lower end of the search range, an array of shape (d,).
         upper_bounds: The upper end of the search range, an array of shape (d,).
@@ -60,7 +73,8 @@ class ProblemInstance:
     """
 
     instance_id: str
-    function_id: int
+    suite: Suite
+    function_id: int | None
     instance_number: int
     dimension: int
     lower_bounds: NDArray[np.float64] = field(repr=False, compare=False)
@@ -96,8 +110,8 @@ class InstanceSplit:
 def bbob_instances(
     *,
     dimension: int = 10,
-    train_instance_numbers: Sequence[int] = range(11, 111),
-    test_instance_numbers: Sequence[int] = range(1, 11),
+    train_instance_numbers: Sequence[int] = DEFAULT_INSTANCE_NUMBERS["bbob"][0],
+    test_instance_numbers: Sequence[int] = DEFAULT_INSTANCE_NUMBERS["bbob"][1],
     seed: int = 42,
 ) -> InstanceSplit:
     """Make P_train, P_test, and P~_test from all 24 BBOB functions.
@@ -108,16 +122,51 @@ def bbob_instances(
 
     Args:
         dimension: d, an int of at least 2.
-        train_instance_numbers: The BBOB instance numbers of the training instances.
-        test_instance_numbers: The instance numbers of the test instances. They must
-            not overlap with the training ones.
+        train_instance_numbers: The BBOB instance numbers of the training instances:
+            ints from 1 to 2**31 - 1, without duplicates, and at least one of them.
+        test_instance_numbers: The instance numbers of the test instances: the
+            same, and none of them among the training ones.
         seed: The master seed, from 0 to 2**32 - 1. It is stored in every instance
             and decides the transformations, the samples, and the run seeds.
     """
     dimension = check_dimension(dimension)
-    train, test = check_instance_numbers(train_instance_numbers, test_instance_numbers)
+    train, test = check_instance_numbers(
+        train_instance_numbers, test_instance_numbers, "bbob"
+    )
     seed = check_seed(seed)
     return make_split(dimension, train, test, seed)
+
+
+def ma_bbob_instances(
+    *,
+    dimension: int = 10,
+    train_instance_numbers: Sequence[int] = DEFAULT_INSTANCE_NUMBERS["ma-bbob"][0],
+    test_instance_numbers: Sequence[int] = DEFAULT_INSTANCE_NUMBERS["ma-bbob"][1],
+    seed: int = 42,
+) -> InstanceSplit:
+    """Make P_train, P_test, and P~_test from MA-BBOB.
+
+    An MA-BBOB instance is an affine combination of the BBOB functions, which ioh
+    derives from the instance number alone. Each set has one instance per instance
+    number, ordered by instance number, and ``function_id`` is None. The
+    transformed test instances are ``transform(p)`` for each test instance p.
+
+    Args:
+        dimension: d, an int of at least 2.
+        train_instance_numbers: The MA-BBOB instance numbers of the training
+            instances: ints from 1 to 2**31 - 1, without duplicates, and at least
+            one of them.
+        test_instance_numbers: The instance numbers of the test instances: the
+            same, and none of them among the training ones.
+        seed: The master seed, from 0 to 2**32 - 1. It is stored in every instance
+            and decides the transformations, the samples, and the run seeds.
+    """
+    dimension = check_dimension(dimension)
+    train, test = check_instance_numbers(
+        train_instance_numbers, test_instance_numbers, "ma-bbob"
+    )
+    seed = check_seed(seed)
+    return make_split(dimension, train, test, seed, suite="ma-bbob")
 
 
 def make_split(
@@ -126,16 +175,22 @@ def make_split(
     test_instance_numbers: Sequence[int],
     seed: int,
     function_ids: Sequence[int] = FUNCTION_IDS,
+    *,
+    suite: Suite = "bbob",
 ) -> InstanceSplit:
-    """bbob_instances without the checks, for a chosen set of functions."""
+    """bbob_instances or ma_bbob_instances without the checks.
+
+    On BBOB, for a chosen set of functions; MA-BBOB ignores ``function_ids``.
+    """
+    chosen: Sequence[int | None] = function_ids if suite == "bbob" else (None,)
     train = tuple(
         _instance(function_id, number, dimension, seed)
-        for function_id in function_ids
+        for function_id in chosen
         for number in train_instance_numbers
     )
     test = tuple(
         _instance(function_id, number, dimension, seed)
-        for function_id in function_ids
+        for function_id in chosen
         for number in test_instance_numbers
     )
     return InstanceSplit(train, test, tuple(transform(instance) for instance in test))
@@ -146,13 +201,15 @@ def transform(instance: ProblemInstance) -> ProblemInstance:
 
     g rescales f to [0, 1] by its optimum and the largest of 10,000 random values,
     and stretches it by a random strictly increasing curve. It depends only on the
-    master seed, the function, the instance number, and the dimension, so the same
-    instance always receives the same g. The search space does not change.
+    master seed, the suite, the function (on BBOB), the instance number, and the
+    dimension, so the same instance always receives the same g. The search space
+    does not change.
     """
     if not isinstance(instance, ProblemInstance):  # pyright: ignore[reportUnnecessaryIsInstance]
         raise error(
             f"transform received {type(instance).__name__}.",
-            why="transform needs a ProblemInstance from rr.bbob_instances().",
+            why="transform needs a ProblemInstance from rr.bbob_instances() or "
+            "rr.ma_bbob_instances().",
             fix="pass an element of split.test, such as split.test[0].",
         )
     if instance.is_transformed:
@@ -196,19 +253,19 @@ class InstanceObjective:
     """Evaluates the objective of an instance with ioh: f, or g(f) if transformed."""
 
     def __init__(self, instance: ProblemInstance) -> None:
-        self._bbob = _bbob(
+        self._problem = _ioh_problem(
             instance.function_id, instance.instance_number, instance.dimension
         )
         self._transformation = transformation_of(instance)
 
     def one(self, x: NDArray[np.float64], /) -> float:
-        value = float(self._bbob(x))
+        value = float(self._problem(x))
         if self._transformation is None:
             return value
         return float(self._transformation(np.array([value]))[0])
 
     def many(self, points: NDArray[np.float64], /) -> NDArray[np.float64]:
-        values = np.asarray(self._bbob(points), dtype=np.float64)
+        values = np.asarray(self._problem(points), dtype=np.float64)
         if self._transformation is None:
             return values
         return self._transformation(values)
@@ -226,12 +283,31 @@ def check_seed(seed: object) -> int:
     )
 
 
+def check_suite(suite: object) -> Suite:
+    if suite == "bbob":
+        return "bbob"
+    if suite == "ma-bbob":
+        return "ma-bbob"
+    raise error(
+        f"suite={suite!r} is not allowed.",
+        why='suite must be "bbob" or "ma-bbob".',
+        fix='pass suite="bbob" or suite="ma-bbob".',
+    )
+
+
 def check_instance_numbers(
-    train_instance_numbers: object, test_instance_numbers: object
+    train_instance_numbers: object,
+    test_instance_numbers: object,
+    suite: Suite = "bbob",
 ) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """Return both sets of numbers sorted; stop if one is invalid or they overlap."""
-    train = _instance_numbers("train_instance_numbers", train_instance_numbers)
-    test = _instance_numbers("test_instance_numbers", test_instance_numbers)
+    default_train, default_test = DEFAULT_INSTANCE_NUMBERS[suite]
+    train = _instance_numbers(
+        "train_instance_numbers", train_instance_numbers, default_train
+    )
+    test = _instance_numbers(
+        "test_instance_numbers", test_instance_numbers, default_test
+    )
     shared = sorted(set(train) & set(test))
     if shared:
         raise error(
@@ -239,7 +315,7 @@ def check_instance_numbers(
             f"{_numbers_text(shared)}.",
             why="a test instance must not also be a training instance.",
             fix="pass instance numbers that do not overlap, such as the defaults "
-            "range(11, 111) for training and range(1, 11) for test.",
+            f"{default_train!r} for training and {default_test!r} for test.",
         )
     return train, test
 
@@ -269,7 +345,7 @@ def instance_tuple(
             raise error(
                 f"{function} received {type(instance).__name__} in instances.",
                 why="instances must be ProblemInstance objects from "
-                "rr.bbob_instances().",
+                "rr.bbob_instances() or rr.ma_bbob_instances().",
                 fix=fix,
             )
         if instance.instance_id in seen:
@@ -282,13 +358,15 @@ def instance_tuple(
     return result
 
 
-def _instance_numbers(name: str, numbers: object) -> tuple[int, ...]:
-    example = "range(11, 111)" if name.startswith("train") else "range(1, 11)"
-    fix = f"pass a range or list of ints of at least 1, such as {name}={example}."
+def _instance_numbers(name: str, numbers: object, example: range) -> tuple[int, ...]:
+    fix = (
+        f"pass a range or list of ints from 1 to {MAX_INSTANCE_NUMBER}, such as "
+        f"{name}={example!r}."
+    )
     if not isinstance(numbers, Sequence) or isinstance(numbers, str):
         raise error(
             f"{name} is a {type(numbers).__name__}.",
-            why=f"{name} must be a sequence of BBOB instance numbers.",
+            why=f"{name} must be a sequence of instance numbers.",
             fix=fix,
         )
     values: list[object] = list(numbers)  # pyright: ignore[reportUnknownArgumentType]
@@ -300,10 +378,15 @@ def _instance_numbers(name: str, numbers: object) -> tuple[int, ...]:
         )
     checked: list[int] = []
     for value in values:
-        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not 1 <= value <= MAX_INSTANCE_NUMBER
+        ):
             raise error(
                 f"{name} contains {value!r}.",
-                why="BBOB instance numbers are ints of at least 1.",
+                why=f"instance numbers are ints from 1 to {MAX_INSTANCE_NUMBER} "
+                "(ioh receives them as C ints).",
                 fix=fix,
             )
         checked.append(value)
@@ -323,12 +406,19 @@ def _numbers_text(numbers: Sequence[int]) -> str:
 
 
 def _instance(
-    function_id: int, instance_number: int, dimension: int, seed: int
+    function_id: int | None, instance_number: int, dimension: int, seed: int
 ) -> ProblemInstance:
-    lower_bounds, upper_bounds = _bounds(dimension)
-    instance_id = f"f{function_id:02d}_i{instance_number:03d}_d{dimension}"
+    """A BBOB instance, or an MA-BBOB instance if ``function_id`` is None."""
+    lower_bounds, upper_bounds = _bounds(function_id is None, dimension)
+    if function_id is None:
+        suite: Suite = "ma-bbob"
+        instance_id = f"mabbob_i{instance_number:03d}_d{dimension}"
+    else:
+        suite = "bbob"
+        instance_id = f"f{function_id:02d}_i{instance_number:03d}_d{dimension}"
     return ProblemInstance(
         instance_id=instance_id,
+        suite=suite,
         function_id=function_id,
         instance_number=instance_number,
         dimension=dimension,
@@ -340,16 +430,27 @@ def _instance(
     )
 
 
-def _bbob(function_id: int, instance_number: int, dimension: int) -> Any:
-    """Return the ioh problem. It is Any: ioh's stubs do not cover batch calls."""
+def _ioh_problem(function_id: int | None, instance_number: int, dimension: int) -> Any:
+    """Return the ioh problem of BBOB, or of MA-BBOB if ``function_id`` is None.
+
+    It is Any: ioh's stubs do not cover batch calls. ioh registers MA-BBOB under no
+    ProblemClass, so ioh.get_problem cannot create it.
+    """
+    if function_id is None:
+        # ioh's stubs do not list ManyAffine.
+        problems: Any = ioh.problem
+        return problems.ManyAffine(instance=instance_number, n_variables=dimension)
     return ioh.get_problem(
         function_id, instance_number, dimension, ioh.ProblemClass.BBOB
     )
 
 
 @functools.cache
-def _bounds(dimension: int) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    bounds = _bbob(1, 1, dimension).bounds
+def _bounds(
+    is_ma_bbob: bool, dimension: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """The search range of the suite, read from its first instance."""
+    bounds = _ioh_problem(None if is_ma_bbob else 1, 1, dimension).bounds
     lower_bounds = np.array(bounds.lb, dtype=np.float64)
     upper_bounds = np.array(bounds.ub, dtype=np.float64)
     lower_bounds.flags.writeable = False
@@ -359,15 +460,16 @@ def _bounds(dimension: int) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
 
 @functools.lru_cache(maxsize=256)
 def _transformation(
-    seed: int, function_id: int, instance_number: int, dimension: int
+    seed: int, function_id: int | None, instance_number: int, dimension: int
 ) -> StrictlyIncreasingTransformation:
-    bbob = _bbob(function_id, instance_number, dimension)
-    lower_bounds, upper_bounds = _bounds(dimension)
-    rng = generator("fmax", seed, "bbob", function_id, instance_number, dimension)
+    problem = _ioh_problem(function_id, instance_number, dimension)
+    lower_bounds, upper_bounds = _bounds(function_id is None, dimension)
+    keys = instance_keys(function_id, instance_number, dimension)
+    rng = generator("fmax", seed, *keys)
     sample = rng.uniform(lower_bounds, upper_bounds, size=(FMAX_SAMPLES, dimension))
-    f_max = float(np.max(np.asarray(bbob(sample), dtype=np.float64)))
+    f_max = float(np.max(np.asarray(problem(sample), dtype=np.float64)))
     return StrictlyIncreasingTransformation(
         sample_psi(seed, function_id, instance_number, dimension),
-        f_min=float(bbob.optimum.y),
+        f_min=float(problem.optimum.y),
         f_max=f_max,
     )

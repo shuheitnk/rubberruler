@@ -15,6 +15,7 @@ from rich.table import Table
 from rich.text import Text
 
 from rubberruler._features import FeatureType
+from rubberruler._instances import DEFAULT_INSTANCE_NUMBERS, Suite
 
 WIDTH = 80
 SEPARATOR = ", "
@@ -49,8 +50,9 @@ MEANING: dict[FeatureType, tuple[str, str]] = {
 
 
 class RunConfig(TypedDict):
-    """The seven settings that decide the result (``result.config``)."""
+    """The eight settings that decide the result (``result.config``)."""
 
+    suite: Suite
     dimension: int
     train_instance_numbers: tuple[int, ...]
     test_instance_numbers: tuple[int, ...]
@@ -61,9 +63,10 @@ class RunConfig(TypedDict):
 
 
 DEFAULT_CONFIG = RunConfig(
+    suite="bbob",
     dimension=10,
-    train_instance_numbers=tuple(range(11, 111)),
-    test_instance_numbers=tuple(range(1, 11)),
+    train_instance_numbers=tuple(DEFAULT_INSTANCE_NUMBERS["bbob"][0]),
+    test_instance_numbers=tuple(DEFAULT_INSTANCE_NUMBERS["bbob"][1]),
     budget_per_dimension=1000,
     n_runs=31,
     n_samples_per_dimension=50,
@@ -238,20 +241,29 @@ def render(
 
 
 def settings(config: RunConfig) -> list[str]:
-    """seed, then each changed setting, in the order of run_test's parameters."""
+    """seed, then each changed setting, in the order of run_test's parameters.
+
+    The instance numbers are compared with the defaults of the suite.
+    """
     seed = config["seed"]
     items = [
         f"seed={seed}"
         if seed == DEFAULT_CONFIG["seed"]
         else f"seed={seed} (default {DEFAULT_CONFIG['seed']})"
     ]
+    suite = config["suite"]
+    if suite != DEFAULT_CONFIG["suite"]:
+        items.append(f"suite={suite} (default {DEFAULT_CONFIG['suite']})")
     if config["dimension"] != DEFAULT_CONFIG["dimension"]:
         items.append(
             _changed("dimension", config["dimension"], DEFAULT_CONFIG["dimension"])
         )
-    for name in ("train_instance_numbers", "test_instance_numbers"):
+    defaults = DEFAULT_INSTANCE_NUMBERS[suite]
+    for name, default_range in zip(
+        ("train_instance_numbers", "test_instance_numbers"), defaults, strict=True
+    ):
         numbers = tuple(sorted(config[name]))
-        default = DEFAULT_CONFIG[name]
+        default = tuple(default_range)
         if numbers != default:
             items.append(f"{name}={_numbers(numbers)} (default {_numbers(default)})")
     for name in ("budget_per_dimension", "n_runs", "n_samples_per_dimension"):

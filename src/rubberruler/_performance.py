@@ -36,7 +36,7 @@ from rubberruler._problem import (
     Problem,
     RunRecord,
 )
-from rubberruler._seeding import derive_seed
+from rubberruler._seeding import derive_seed, instance_keys
 
 logger = logging.getLogger("rubberruler")
 
@@ -133,7 +133,8 @@ def measure_performance(
     Args:
         portfolio: Algorithm names mapped to algorithms. Each algorithm takes a
             ``rr.Problem``. At least 2.
-        instances: The instances, such as ``split`` from ``rr.bbob_instances()``.
+        instances: The instances, such as ``split`` from ``rr.bbob_instances()`` or
+            ``rr.ma_bbob_instances()``.
         budget_per_dimension: The budget of one run divided by d.
         n_runs: The number of runs of each algorithm on each instance.
         n_jobs: The number of worker processes; -1 uses every CPU.
@@ -476,16 +477,10 @@ def new_problem(
 
 def run_seed(instance: ProblemInstance, algorithm: str, run_number: int) -> int:
     """The seed of a run. A transformed instance uses the seed of its original."""
-    return derive_seed(
-        "run",
-        instance.seed,
-        "bbob",
-        instance.function_id,
-        instance.instance_number,
-        instance.dimension,
-        algorithm,
-        run_number,
+    keys = instance_keys(
+        instance.function_id, instance.instance_number, instance.dimension
     )
+    return derive_seed("run", instance.seed, *keys, algorithm, run_number)
 
 
 def seed_global_generators(seed: int) -> None:

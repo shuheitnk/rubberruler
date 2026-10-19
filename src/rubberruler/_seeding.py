@@ -20,6 +20,20 @@ def derive_seed(domain: str, seed: int, *keys: str | int) -> int:
     return int.from_bytes(digest, "little")
 
 
+def instance_keys(
+    function_id: int | None, instance_number: int, dimension: int
+) -> tuple[str | int, ...]:
+    """The keys of one instance in ``derive_seed``.
+
+    ``("bbob", function_id, instance_number, dimension)`` on BBOB, and
+    ``("ma-bbob", instance_number, dimension)`` on MA-BBOB, which has no function ID
+    (``function_id`` is None).
+    """
+    if function_id is None:
+        return ("ma-bbob", instance_number, dimension)
+    return ("bbob", function_id, instance_number, dimension)
+
+
 def generator(domain: str, seed: int, *keys: str | int) -> np.random.Generator:
     """Return ``numpy.random.default_rng(derive_seed(domain, seed, *keys))``."""
     return np.random.default_rng(derive_seed(domain, seed, *keys))

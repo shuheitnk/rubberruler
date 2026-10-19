@@ -145,6 +145,7 @@ def test_both_weak_notes_can_appear_together() -> None:
 def test_changed_settings_follow_the_seed_and_wrap_at_the_separator() -> None:
     """Seed, then changed settings in run_test's order, wrapped at ", "."""
     config = RunConfig(
+        suite="bbob",
         dimension=20,
         train_instance_numbers=(20, 11, 12, 13, 14, 15, 16, 17, 18, 19),
         test_instance_numbers=(1, 3, 5),
@@ -168,6 +169,7 @@ def test_changed_settings_follow_the_seed_and_wrap_at_the_separator() -> None:
 def test_default_instance_numbers_in_another_order_are_not_shown() -> None:
     """Instance numbers are compared as sorted tuples."""
     config = RunConfig(
+        suite="bbob",
         dimension=10,
         train_instance_numbers=tuple(reversed(range(11, 111))),
         test_instance_numbers=tuple(range(1, 11)),
@@ -182,6 +184,7 @@ def test_default_instance_numbers_in_another_order_are_not_shown() -> None:
 def test_a_single_instance_number_is_shown_as_itself() -> None:
     """One instance number is shown as "5", not as a range."""
     config = RunConfig(
+        suite="bbob",
         dimension=10,
         train_instance_numbers=tuple(range(11, 111)),
         test_instance_numbers=(5,),

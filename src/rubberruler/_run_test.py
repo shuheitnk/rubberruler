@@ -19,6 +19,7 @@ from rubberruler._console import progress, say, stage
 from rubberruler._errors import error
 from rubberruler._features import (
     FEATURE_TYPES,
+    MA_BBOB_PRECHECK_INSTANCES,
     FeatureExtractor,
     FeatureTable,
     check_n_samples_per_dimension,
@@ -29,11 +30,14 @@ from rubberruler._features import (
 from rubberruler._figure import FILE_NAME as FIGURE_FILE_NAME
 from rubberruler._figure import save_figure
 from rubberruler._instances import (
+    DEFAULT_INSTANCE_NUMBERS,
     FUNCTION_IDS,
     InstanceSplit,
+    Suite,
     check_dimension,
     check_instance_numbers,
     check_seed,
+    check_suite,
     make_split,
     transformation_of,
 )
@@ -78,7 +82,7 @@ class RubberRulerResult:
         split: The instances that were used.
         performance: J with one row per instance_id and one column per algorithm.
         features: The features of each feature type ("value" and "rank").
-        config: The seven settings; ``rr.run_test(..., **result.config)`` repeats
+        config: The eight settings; ``rr.run_test(..., **result.config)`` repeats
             the test with them.
     """
 
@@ -119,9 +123,10 @@ def run_test(
     feature_extractor: FeatureExtractor,
     predictor: object,
     *,
+    suite: Literal["bbob", "ma-bbob"] = "bbob",
     dimension: int = 10,
-    train_instance_numbers: Sequence[int] = range(11, 111),
-    test_instance_numbers: Sequence[int] = range(1, 11),
+    train_instance_numbers: Sequence[int] | None = None,
+    test_instance_numbers: Sequence[int] | None = None,
     budget_per_dimension: int = 1000,
     n_runs: int = 31,
     n_samples_per_dimension: int = 50,
@@ -155,11 +160,17 @@ def run_test(
         feature_extractor: A function ``(X, y) -> dict[str, float]``.
         predictor: An unfitted regressor with ``fit(X, y)`` and ``predict(X)``,
             such as ``RandomForestRegressor(random_state=0)``.
+        suite: The problem suite of all instances: "bbob" (the 24 BBOB functions,
+            24 instances per instance number) or "ma-bbob" (MA-BBOB, one instance
+            per instance number).
         dimension: d, an int of at least 2.
-        train_instance_numbers: The BBOB instance numbers of the training instances:
-            ints of at least 1, without duplicates, and at least one of them.
-        test_instance_numbers: The BBOB instance numbers of the test instances: the
-            same, and none of them among the training ones.
+        train_instance_numbers: The instance numbers of the training instances:
+            ints from 1 to 2**31 - 1, without duplicates, and at least one of them.
+            None takes the default of the suite: range(11, 111) on BBOB and
+            range(1, 2401) on MA-BBOB.
+        test_instance_numbers: The instance numbers of the test instances: the
+            same, and none of them among the training ones. None takes the default
+            of the suite: range(1, 11) on BBOB and range(2401, 2641) on MA-BBOB.
         budget_per_dimension: The budget of one run divided by d, an int of at
             least 1.
         n_runs: The number of runs of each algorithm on each instance, an int of at
@@ -185,6 +196,7 @@ def run_test(
         portfolio,
         feature_extractor,
         predictor,
+        suite=suite,
         dimension=dimension,
         train_instance_numbers=train_instance_numbers,
         test_instance_numbers=test_instance_numbers,
@@ -203,9 +215,10 @@ def run(
     feature_extractor: FeatureExtractor,
     predictor: object,
     *,
+    suite: Suite = "bbob",
     dimension: int,
-    train_instance_numbers: Sequence[int],
-    test_instance_numbers: Sequence[int],
+    train_instance_numbers: Sequence[int] | None,
+    test_instance_numbers: Sequence[int] | None,
     budget_per_dimension: int,
     n_runs: int,
     n_samples_per_dimension: int,
@@ -214,11 +227,21 @@ def run(
     cache_dir: str | os.PathLike[str] | None,
     function_ids: Sequence[int],
 ) -> RubberRulerResult:
-    """run_test on the chosen BBOB functions (the tests use fewer than 24)."""
+    """run_test on the chosen BBOB functions (the tests use fewer than 24).
+
+    On MA-BBOB, ``function_ids`` is not used.
+    """
     algorithms = check_portfolio(portfolio)
+    suite = check_suite(suite)
     dimension = check_dimension(dimension)
-    train, test = check_instance_numbers(train_instance_numbers, test_instance_numbers)
+    default_train, default_test = DEFAULT_INSTANCE_NUMBERS[suite]
+    train, test = check_instance_numbers(
+        default_train if train_instance_numbers is None else train_instance_numbers,
+        default_test if test_instance_numbers is None else test_instance_numbers,
+        suite,
+    )
     config = RunConfig(
+        suite=suite,
         dimension=dimension,
         train_instance_numbers=train,
         test_instance_numbers=test,
@@ -230,12 +253,23 @@ def run(
     n_jobs = check_n_jobs(n_jobs)
     folder = check_cache_dir(cache_dir)
 
-    firsts = make_split(dimension, train[:1], (), config["seed"], function_ids).train
+    # The first training instance of each BBOB function, or the first 24 training
+    # instances of MA-BBOB, which has no functions.
+    firsts = make_split(
+        dimension,
+        train[:1] if suite == "bbob" else train[:MA_BBOB_PRECHECK_INSTANCES],
+        (),
+        config["seed"],
+        function_ids,
+        suite=suite,
+    ).train
     precheck_predictor(predictor)
     precheck_extractor(feature_extractor, firsts, n_samples_per_dimension)
     precheck_algorithms(algorithms, firsts[0], n_jobs=n_jobs)
 
-    split = make_split(dimension, train, test, config["seed"], function_ids)
+    split = make_split(
+        dimension, train, test, config["seed"], function_ids, suite=suite
+    )
     instances = list(split)
     plan = plan_runs(
         algorithms,

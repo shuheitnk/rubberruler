@@ -7,18 +7,20 @@ from numpy.typing import NDArray
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import CubicSpline, PchipInterpolator
 
-from rubberruler._seeding import generator
+from rubberruler._seeding import generator, instance_keys
 
 GRID_POINTS = 2001
 
 
 def log_density(
-    seed: int, function_id: int, instance_number: int, dimension: int
+    seed: int, function_id: int | None, instance_number: int, dimension: int
 ) -> CubicSpline:
-    """Draw the spline s whose exp is the density of psi of one BBOB instance."""
-    return draw_log_density(
-        generator("transform", seed, "bbob", function_id, instance_number, dimension)
-    )
+    """Draw the spline s whose exp is the density of psi of one instance.
+
+    ``function_id`` is None on MA-BBOB.
+    """
+    keys = instance_keys(function_id, instance_number, dimension)
+    return draw_log_density(generator("transform", seed, *keys))
 
 
 def draw_log_density(rng: np.random.Generator) -> CubicSpline:
@@ -40,7 +42,7 @@ def psi_from(s: CubicSpline) -> PchipInterpolator:
 
 
 def sample_psi(
-    seed: int, function_id: int, instance_number: int, dimension: int
+    seed: int, function_id: int | None, instance_number: int, dimension: int
 ) -> PchipInterpolator:
     """Draw psi for one instance. The same arguments always give the same psi."""
     return psi_from(log_density(seed, function_id, instance_number, dimension))

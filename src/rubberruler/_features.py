@@ -20,7 +20,7 @@ from rubberruler._instances import (
     original_of,
     transformation_of,
 )
-from rubberruler._seeding import generator
+from rubberruler._seeding import generator, instance_keys
 
 logger = logging.getLogger("rubberruler")
 
@@ -29,6 +29,7 @@ FeatureExtractor = Callable[
     [NDArray[np.float64], NDArray[np.float64]], Mapping[str, float]
 ]
 FEATURE_TYPES: tuple[FeatureType, ...] = ("value", "rank")
+MA_BBOB_PRECHECK_INSTANCES = 24
 FIX_KEYS = (
     'return a dict with fixed keys; use float("nan") for values you cannot compute.'
 )
@@ -71,7 +72,8 @@ def compute_features(
         feature_extractor: A function ``(X, y) -> dict[str, float]`` that returns the
             same keys for every instance. Use ``float("nan")`` for values it cannot
             compute.
-        instances: The instances, such as ``split`` from ``rr.bbob_instances()``.
+        instances: The instances, such as ``split`` from ``rr.bbob_instances()`` or
+            ``rr.ma_bbob_instances()``.
         feature_type: "value" or "rank".
         n_samples_per_dimension: n divided by d.
 
@@ -148,19 +150,14 @@ def feature_sample(
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], bool]:
     """Return X, the preprocessed y, and whether y was constant.
 
-    X depends only on the master seed, function, instance number, and dimension, so
-    an instance and its transformed version share it. f(X) is evaluated once per
-    original instance and kept in ``raw_values``; a transformed instance uses g(f(X)).
+    X depends only on the master seed and the instance keys (the suite, the function
+    on BBOB, the instance number, and the dimension), so an instance and its
+    transformed version share it. f(X) is evaluated once per original instance and
+    kept in ``raw_values``; a transformed instance uses g(f(X)).
     """
     dimension = instance.dimension
-    rng = generator(
-        "features",
-        instance.seed,
-        "bbob",
-        instance.function_id,
-        instance.instance_number,
-        dimension,
-    )
+    keys = instance_keys(instance.function_id, instance.instance_number, dimension)
+    rng = generator("features", instance.seed, *keys)
     sample = rng.uniform(
         instance.lower_bounds,
         instance.upper_bounds,
@@ -270,9 +267,9 @@ def precheck_extractor(
 ) -> None:
     """Stop if the extractor fails on the first instance of a function.
 
-    On the first of the instances of each function, it must work for both feature
-    types, return a Mapping with str keys and values that convert with float(), and
-    give the same keys everywhere.
+    On the first of the instances of each BBOB function and on the first 24 MA-BBOB
+    instances, it must work for both feature types, return a Mapping with str keys
+    and values that convert with float(), and give the same keys everywhere.
     """
     if not callable(feature_extractor):
         raise error(
@@ -284,7 +281,7 @@ def precheck_extractor(
         )
     raw: dict[tuple[str, int], NDArray[np.float64]] = {}
     rows: list[Row] = []
-    for instance in first_of_each_function(instances):
+    for instance in precheck_instances(instances):
         for feature_type in FEATURE_TYPES:
             sample, y, _ = feature_sample(
                 instance, feature_type, n_samples_per_dimension, raw
@@ -295,14 +292,27 @@ def precheck_extractor(
             rows.append(row)
 
 
-def first_of_each_function(
+def precheck_instances(
     instances: Sequence[ProblemInstance],
 ) -> list[ProblemInstance]:
-    """The first instance of each function, in the order of instances."""
-    firsts: dict[int, ProblemInstance] = {}
+    """The first instance of each BBOB function and the first 24 MA-BBOB instances,
+    in the order of instances.
+
+    MA-BBOB has no function to take the first instance of, so its first 24
+    instances give as many calls as the 24 functions of BBOB.
+    """
+    chosen: list[ProblemInstance] = []
+    functions: set[int] = set()
+    ma_bbob = 0
     for instance in instances:
-        firsts.setdefault(instance.function_id, instance)
-    return list(firsts.values())
+        if instance.function_id is None:
+            if ma_bbob < MA_BBOB_PRECHECK_INSTANCES:
+                ma_bbob += 1
+                chosen.append(instance)
+        elif instance.function_id not in functions:
+            functions.add(instance.function_id)
+            chosen.append(instance)
+    return chosen
 
 
 def feature_warnings(
