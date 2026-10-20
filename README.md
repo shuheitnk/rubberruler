@@ -7,7 +7,7 @@
 
 rubberruler implements the Rubber Ruler Test. Given an algorithm portfolio, a feature extractor, and a performance predictor, it tells you whether to compute the features from the objective values (value-based) or from their ranks (rank-based).
 
-Comparison-based algorithms such as CMA-ES and DE are invariant to strictly increasing transformations of the objective, but features computed from the objective values are not. A performance predictor trained on such features can therefore fail after a transformation, even though the best algorithm stays the same. rubberruler transforms BBOB test instances with random strictly increasing functions, the rubber rulers, and keeps the feature type whose predictions still hold.
+Comparison-based algorithms such as CMA-ES and DE are invariant to strictly increasing transformations of the objective, but features computed from the objective values are not. A performance predictor trained on such features can therefore fail after a transformation, even though the best algorithm stays the same. rubberruler transforms BBOB (or MA-BBOB) test instances with random strictly increasing functions, the rubber rulers, and keeps the feature type whose predictions still hold.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shuheitnk/rubberruler/main/assets/flow-dark.png">
@@ -143,7 +143,7 @@ The same numbers are saved as a figure, `.rubberruler/rubber_ruler_test.png` and
 | `predictor` | `predictor.fit(X, y)`, then `predictor.predict(X)` | a float64 array |
 
 - **Algorithms.** `problem(x)` evaluates one point of shape (d,), or n points of shape (n, d) at once. `problem` also has `dimension`, `lower_bounds`, `upper_bounds`, `budget`, and `seed`. When the budget is spent, the next call ends the run with an exception that `except Exception` does not catch, and rubberruler keeps the best value seen. Algorithms written for IOHexperimenter work without changes.
-- **Feature extractors.** `X` has shape (n, d) and lies in the search range, [-5, 5]^d on BBOB. `y` has shape (n,) and lies in [0, 1]. Return the same keys for every instance, and `float("nan")` for a value that cannot be computed.
+- **Feature extractors.** `X` has shape (n, d) and lies in the search range, [-5, 5]^d on BBOB and MA-BBOB. `y` has shape (n,) and lies in [0, 1]. Return the same keys for every instance, and `float("nan")` for a value that cannot be computed.
 - **Predictors.** A scikit-learn regressor or `Pipeline` works as it is, and so does any object with `fit` and `predict`. rubberruler fits a copy for each algorithm and feature type: X holds the features of the training instances, and y the performance of the algorithm on them. Set the predictor's own seed, such as `random_state=0`.
 
 ### Settings
@@ -155,9 +155,10 @@ All arguments of `run_test` except the first three are keyword-only. The default
 | `portfolio` | | Algorithm names mapped to algorithms, at least 2 |
 | `feature_extractor` | | `(X, y) -> dict[str, float]` |
 | `predictor` | | An unfitted regressor with `fit` and `predict` |
-| `dimension` | `10` | The dimension d of the BBOB functions |
-| `train_instance_numbers` | `range(11, 111)` | BBOB instance numbers of the training instances |
-| `test_instance_numbers` | `range(1, 11)` | BBOB instance numbers of the test instances |
+| `suite` | `"bbob"` | The problem suite: `"bbob"` (the 24 BBOB functions) or `"ma-bbob"` (MA-BBOB) |
+| `dimension` | `10` | The dimension d of the instances |
+| `train_instance_numbers` | `None` | Instance numbers of the training instances; `None` takes `range(11, 111)` on BBOB and `range(1, 2401)` on MA-BBOB |
+| `test_instance_numbers` | `None` | Instance numbers of the test instances; `None` takes `range(1, 11)` on BBOB and `range(2401, 2641)` on MA-BBOB |
 | `budget_per_dimension` | `1000` | The budget of one run divided by d |
 | `n_runs` | `31` | Runs of each algorithm on each instance |
 | `n_samples_per_dimension` | `50` | Sample points for the features divided by d |
@@ -167,12 +168,13 @@ All arguments of `run_test` except the first three are keyword-only. The default
 
 ### API
 
-The package exports ten names. Besides `run_test`, each stage of the test is available on its own, and so is the rubber ruler for your own objectives:
+The package exports eleven names. Besides `run_test`, each stage of the test is available on its own, and so is the rubber ruler for your own objectives:
 
 | Name | Description |
 |---|---|
 | `run_test(portfolio, feature_extractor, predictor, ...)` | Run the whole test and return the result; `print(result)` shows the card |
-| `bbob_instances(...)` | Create the training, test, and transformed test instances |
+| `bbob_instances(...)` | Create the training, test, and transformed test instances from BBOB |
+| `ma_bbob_instances(...)` | Create them from MA-BBOB |
 | `transform(instance)` | Return the transformed instance, whose objective is g(f(x)) |
 | `transform_objective(objective, lower_bounds, upper_bounds, seed=...)` | Return the transformed objective g(f(x)) for your own objective f, with a random rubber ruler |
 | `measure_performance(portfolio, instances, ...)` | Measure the performance J of every algorithm on every instance |
@@ -186,7 +188,7 @@ The package exports ten names. Besides `run_test`, each stage of the test is ava
 
 ### Notes
 
-- **Pre-checks.** Before the main computation, rubberruler runs every algorithm once with a small budget, the predictor once on dummy data, and the extractor on one instance of each function. A problem stops `run_test` there with an `rr.RubberRulerError` of three lines: what happened, `Why:`, and `Fix:`. An algorithm whose short run takes more than 60 seconds also stops it.
+- **Pre-checks.** Before the main computation, rubberruler runs every algorithm once with a small budget, the predictor once on dummy data, and the extractor on one instance of each function (on MA-BBOB, on the first 24 training instances). A problem stops `run_test` there with an `rr.RubberRulerError` of three lines: what happened, `Why:`, and `Fix:`. An algorithm whose short run takes more than 60 seconds also stops it.
 - **Caching and resuming.** Finished runs are stored in `cache_dir`. After an interruption (Ctrl+C), run the same call again to resume. If you change the source of an algorithm, even a comment, only that algorithm runs again. Delete the folder to start over.
 - **Memory.** Each worker process uses up to a few hundred MB. Pass a smaller `n_jobs` to use less.
 - **Progress.** In a terminal or a notebook, the stages are drawn with [rich](https://github.com/Textualize/rich). When stderr is redirected to a file, each stage writes plain lines instead: when it starts, at most every 30 seconds, and when it ends. Set `RUBBERRULER_NO_PROGRESS=1` to hide the progress bars.
@@ -210,6 +212,8 @@ The transformation keeps the order of any two objective values. A comparison-bas
 The degradation does not decide the answer: rank-based features do not change under the transformation, so their degradation is about 0 by construction, even when they predict poorly. R² on the transformed test instances compares what each feature type actually achieves.
 
 The card marks the answer as weak when the two R² values differ by less than 0.01, or when both are below 0.1. In the second case, improve the extractor or the predictor before choosing a feature type.
+
+With `suite="ma-bbob"`, the instances come from MA-BBOB, the affine combinations of the BBOB functions in [ioh](https://github.com/IOHprofiler/IOHexperimenter). Each instance number gives one instance, so the training instances are 1 to 2400 and the test instances 2401 to 2640, as many as on BBOB; everything else stays the same. MA-BBOB is slower to evaluate: with the default settings, the quickstart with `suite="ma-bbob"` takes about two hours on a 16-core PC.
 
 Each test instance has its own rubber ruler; the figure shows 25 of them:
 
