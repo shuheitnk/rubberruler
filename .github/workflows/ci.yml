@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run of the older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      UV_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+      - run: uv run ruff format --check
+      - run: uv run ruff check
+      # The types for Python 3.11 (in a fresh environment from uv.lock) and 3.12
+      - run: uv run --python 3.11 --isolated pyright
+      - run: uv run pyright --pythonversion 3.12
+      - run: uv run pytest
+
+  # The tests on Windows, with the versions of uv.lock
+  windows:
+    runs-on: windows-latest
+    env:
+      UV_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+      - run: uv run pytest
+
+  # Python 3.14 with the versions of uv.lock. ioh has no wheel for it, so pip builds one
+  # from the sdist (about 4 minutes), and the cache keeps that wheel for each ioh version.
+  python-3-14:
+    runs-on: ubuntu-latest
+    env:
+      UV_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.14"
+      - name: Read the version of ioh in uv.lock
+        id: ioh
+        run: echo "version=$(grep -A1 '^name = "ioh"$' uv.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v6
+        id: cache
+        with:
+          path: ioh-wheel
+          key: ioh-${{ steps.ioh.outputs.version }}-cp314-${{ runner.os }}-${{ runner.arch }}
+      - name: Build ioh from its sdist
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: uvx --python 3.14 pip wheel "ioh==${{ steps.ioh.outputs.version }}" --no-deps --no-binary ioh -w ioh-wheel
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ioh-wheel
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Install the versions of uv.lock, with that ioh
+        run: |
+          uv sync --no-install-package ioh
+          uv pip install --no-deps ioh-wheel/*.whl
+      - run: uv run --no-sync pytest
+
+  # Python 3.11 with pflacco, ModularCMAES, and ModDE, installed with pip (no uv.lock).
+  # The tests that need the versions in uv.lock (marker `locked`) are left out.
+  pflacco:
+    runs-on: ubuntu-latest
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: >-
+          pip install --quiet . pflacco==1.2.2 modcma==1.2.0 modde==0.0.4 pymoo==0.6.2
+          "pyarrow<26" pytest hypothesis
+      - name: Show the versions and check that pip chose ioh below 0.3.19 and NumPy 1
+        shell: python
+        run: |
+          import sys
+          from importlib.metadata import version
+
+          names = ("ioh", "numpy", "scipy", "scikit-learn", "pandas", "pyarrow", "pymoo")
+          versions = {name: version(name) for name in names}
+          print("Python", sys.version.split()[0], *(f"{n} {v}" for n, v in versions.items()))
+          ioh = tuple(int(part) for part in versions["ioh"].split(".")[:3])
+          assert ioh < (0, 3, 19), f"ioh {versions['ioh']} is not below 0.3.19"
+          assert int(versions["numpy"].split(".")[0]) < 2, f"NumPy {versions['numpy']} is not below 2"
+      - run: python -m pytest -m "not locked"
+
+  # Python 3.12 with DeepELA (a pinned commit from GitHub) and PyTorch for the CPU, with
+  # pip (no uv.lock). DeepELA is not on PyPI, so it is checked out (about 80 MB with its
+  # four models) and put on PYTHONPATH. Only tests/test_deepela.py runs.
+  deepela:
+    runs-on: ubuntu-latest
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: mvseiler/deep_ela
+          ref: c0368677461f96a17536111ee947bf111e8b8425
+          path: deep_ela
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: >-
+          pip install --quiet . scikit-learn lightning==2.6.6 einops==0.8.2 pyyaml==6.0.3
+          pytest
+      - name: Show the versions and check that torch is the CPU build
+        shell: python
+        run: |
+          import sys
+          from importlib.metadata import version
+
+          import torch
+
+          names = ("torch", "lightning", "numpy", "scipy", "scikit-learn", "ioh")
+          print("Python", sys.version.split()[0], *(f"{name} {version(name)}" for name in names))
+          print("torch threads", torch.get_num_threads())
+          assert torch.version.cuda is None, f"torch {torch.__version__} is not the CPU build"
+      - run: python -m pytest tests/test_deepela.py tests/test_feature_free.py
+        env:
+          PYTHONPATH: ${{ github.workspace }}/deep_ela

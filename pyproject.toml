@@ -1,0 +1,112 @@
+[project]
+name = "rubberruler"
+version = "0.1.0"
+description = "Decide with BBOB, MA-BBOB, or your own objective functions whether to compute features value-based or rank-based."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Shuhei Tanaka" }]
+keywords = [
+    "algorithm selection",
+    "black-box optimization",
+    "BBOB",
+    "MA-BBOB",
+    "exploratory landscape analysis",
+    "performance prediction",
+    "benchmarking",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "pyarrow>=25.0",
+    "ioh>=0.3.17",
+    "joblib>=1.6",
+    "cloudpickle>=3.0",
+    "threadpoolctl>=3.7",
+    "rich>=13.7",
+    "matplotlib>=3.10",
+    "psutil>=7.2",
+]
+
+[project.urls]
+Repository = "https://github.com/shuheitnk/rubberruler"
+Changelog = "https://github.com/shuheitnk/rubberruler/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "hypothesis",
+    "ruff",
+    "pyright",
+    "pandas-stubs",
+    "scikit-learn>=1.2",
+]
+examples = [
+    "pymoo==0.6.2",
+]
+
+# uv sync and uv run install the libraries of the examples too, so the tests run them.
+[tool.uv]
+default-groups = ["dev", "examples"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The sdist has what it takes to build the wheel, and nothing for development.
+[tool.hatch.build.targets.sdist]
+include = ["/src/rubberruler", "/README.md", "/LICENSE", "/pyproject.toml"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "NPY", "PD", "RUF"]
+
+[tool.pyright]
+include = ["src", "tests", "examples"]
+exclude = ["tests/typing/fail"]
+strict = [
+    "src/rubberruler/__init__.py",
+    "src/rubberruler/_errors.py",
+    "src/rubberruler/_seeding.py",
+    "src/rubberruler/_problem.py",
+    "src/rubberruler/_instances.py",
+    "src/rubberruler/_objective.py",
+    "src/rubberruler/_performance.py",
+    "src/rubberruler/_features.py",
+    "src/rubberruler/_prediction.py",
+    "src/rubberruler/_card.py",
+    "src/rubberruler/_run_test.py",
+]
+typeCheckingMode = "standard"
+pythonVersion = "3.11"
+# The examples are for users to copy, so they carry no comments for the tools.
+# Some import libraries that are not installed here (pflacco, ModularCMAES, ModDE,
+# DeepELA, PyTorch), and example1.py passes seed= to differential_evolution, which
+# SciPy 1.10 needs and which SciPy 1.15 and later leave out of the types.
+executionEnvironments = [
+    { root = "examples", reportMissingImports = false, reportCallIssue = false },
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+minversion = "9.0"
+addopts = ["--import-mode=importlib", "-ra", "--strict-markers", "--strict-config"]
+xfail_strict = true
+markers = [
+    "slow: runs the README tutorial for real (about 20 seconds) and waits out the 60-second limit of the pre-check; pytest -m 'not slow' skips them, and CI runs them",
+    "locked: needs the versions in uv.lock (the README card, pyright); the pflacco environment skips it",
+]
