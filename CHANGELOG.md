@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-13)
 
 - `rr.run_test(portfolio, feature_extractor, predictor)` answers whether to compute features value-based or rank-based (from the objective values or from their ranks, both min-max normalized), prints the card, and saves the figure.
 - Problem suites: BBOB, MA-BBOB (`suite="ma-bbob"`), and your own objective functions (`rr.objective_instances`).

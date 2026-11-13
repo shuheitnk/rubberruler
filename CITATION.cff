@@ -3,6 +3,7 @@ message: "If you use this software, please cite it as below."
 type: software
 title: "Rubber Ruler"
 version: "0.1.0"
+date-released: "2026-11-13"
 license: MIT
 repository-code: "https://github.com/shuheitnk/rubberruler"
 authors:
